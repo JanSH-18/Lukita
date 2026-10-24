@@ -1,7 +1,11 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Globe } from 'lucide-react'
+import { Globe } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import {
+  inputClass,
+  PasswordVisibilityIcon,
+} from '../components/AuthControls'
 import {
   EMAIL_REGEX,
   isDisposableEmail,
@@ -9,9 +13,6 @@ import {
   isEmailRegistered,
   registerUser,
 } from '../lib/auth'
-
-const inputClass =
-  'w-full rounded-lg border border-[#e2e5ea] bg-[#f3f4f6] px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#2f4bb5] focus:bg-white focus:ring-2 focus:ring-[#2f4bb5]/20'
 
 const errorInputClass =
   'border-red-300 focus:border-red-400 focus:ring-red-200'
@@ -270,19 +271,10 @@ function Registro() {
                 aria-pressed={showPassword}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#2f4bb5]"
               >
-                {showPassword ? (
-                  <EyeOff
-                    className="h-4 w-4"
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Eye
-                    className="h-4 w-4"
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                  />
-                )}
+                <PasswordVisibilityIcon
+                  visible={showPassword}
+                  className="h-4 w-4"
+                />
               </button>
             </div>
             {errors.password && (
@@ -324,19 +316,10 @@ function Registro() {
                 aria-pressed={showConfirmPassword}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#2f4bb5]"
               >
-                {showConfirmPassword ? (
-                  <EyeOff
-                    className="h-4 w-4"
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Eye
-                    className="h-4 w-4"
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                  />
-                )}
+                <PasswordVisibilityIcon
+                  visible={showConfirmPassword}
+                  className="h-4 w-4"
+                />
               </button>
             </div>
             {errors.confirmPassword && (
