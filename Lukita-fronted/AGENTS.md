@@ -14,6 +14,13 @@
 - There are no `test`, `typecheck`, format, or codegen scripts. Do not invent them.
 - Vite 8 requires Node `^20.19.0 || >=22.12.0`.
 
+## Reglas
+- Responde siempre en español.
+- Usa solo React y Tailwind; no agregues otras librerias de UI o estilos.
+- Cada pantalla debe cumplir los criterios de aceptacion de su historia.
+- Explica que archivos cambias y por que.
+- Usa datos de prueba, nunca datos reales.
+
 ## Gotchas
 - Tailwind v4 has no `tailwind.config.js` and no PostCSS config. Customize the theme in CSS (`@theme` in `src/index.css`), not a JS config.
 - The `tailwind` package in dependencies is an unrelated "CQS applications" module, not Tailwind CSS. Do not import it (or `css`); neither is used.

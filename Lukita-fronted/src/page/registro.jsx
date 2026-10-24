@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Eye, EyeOff, Globe } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import {
   EMAIL_REGEX,
@@ -14,68 +16,8 @@ const inputClass =
 const errorInputClass =
   'border-red-300 focus:border-red-400 focus:ring-red-200'
 
-function GoogleIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 22c2.7 0 4.96-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.06v2.59A10 10 0 0 0 12 22Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M6.41 13.94A6 6 0 0 1 6.1 12c0-.67.11-1.32.31-1.94V7.47H3.06A10 10 0 0 0 2 12c0 1.61.39 3.14 1.06 4.53l3.35-2.59Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.94c1.47 0 2.79.51 3.82 1.5l2.87-2.87A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.94 5.47l3.35 2.59C7.2 7.7 9.4 5.94 12 5.94Z"
-      />
-    </svg>
-  )
-}
-
-function EyeIcon({ className }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-function EyeOffIcon({ className }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 3l18 18" />
-      <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.1 4.1" />
-      <path d="M6.2 6.2A17.5 17.5 0 0 0 2 12s3.5 7 10 7a10.9 10.9 0 0 0 4.1-.8" />
-      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-    </svg>
-  )
-}
-
 function Registro() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -329,9 +271,17 @@ function Registro() {
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#2f4bb5]"
               >
                 {showPassword ? (
-                  <EyeOffIcon className="h-4 w-4" />
+                  <EyeOff
+                    className="h-4 w-4"
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <EyeIcon className="h-4 w-4" />
+                  <Eye
+                    className="h-4 w-4"
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  />
                 )}
               </button>
             </div>
@@ -375,9 +325,17 @@ function Registro() {
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#2f4bb5]"
               >
                 {showConfirmPassword ? (
-                  <EyeOffIcon className="h-4 w-4" />
+                  <EyeOff
+                    className="h-4 w-4"
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <EyeIcon className="h-4 w-4" />
+                  <Eye
+                    className="h-4 w-4"
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  />
                 )}
               </button>
             </div>
@@ -418,7 +376,7 @@ function Registro() {
           onClick={
             success
               ? () => {
-                  window.location.hash = '#/login'
+                  navigate('/login', { replace: true })
                 }
               : undefined
           }
@@ -452,18 +410,18 @@ function Registro() {
         }
         className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
       >
-        <GoogleIcon className="h-4 w-4" />
+        <Globe className="h-4 w-4" aria-hidden="true" />
         Continuar con Google
       </button>
 
       <p className="mt-6 text-center text-xs text-slate-500">
         ¿Ya tienes cuenta?{' '}
-        <a
-          href="#/login"
+        <Link
+          to="/login"
           className="font-semibold text-[#1f3fa8] transition hover:text-[#162d7d]"
         >
           Inicia sesión
-        </a>
+        </Link>
       </p>
     </AuthLayout>
   )

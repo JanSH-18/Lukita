@@ -1,17 +1,29 @@
 import { useMemo, useState } from 'react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronRight,
+  LogOut,
+  Menu,
+  Plus,
+  Search,
+  Star,
+  X,
+} from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
 
 const NAV_ITEMS = [
-  'Dashboard',
-  'Mi dinero',
-  'Transacciones',
-  'Gastos extras',
-  'Categorías',
-  'Presupuestos',
-  'Metas de ahorro',
-  'Recurrentes',
-  'Cuentas',
-  'Reportes',
-  'Configuración',
+  { label: 'Dashboard', to: '/app' },
+  { label: 'Mi dinero', to: '/app/mi-dinero' },
+  { label: 'Transacciones', to: '/app/transacciones' },
+  { label: 'Gastos extras', to: '/app/gastos-extras' },
+  { label: 'Categorías', to: '/app/categorias' },
+  { label: 'Presupuestos', to: '/app/presupuestos' },
+  { label: 'Metas de ahorro', to: '/app/metas-de-ahorro' },
+  { label: 'Recurrentes', to: '/app/recurrentes' },
+  { label: 'Cuentas', to: '/app/cuentas' },
+  { label: 'Reportes', to: '/app/reportes' },
+  { label: 'Configuración', to: '/app/configuracion' },
 ]
 
 const MONTHS = [
@@ -95,32 +107,29 @@ const currency = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 })
 
+const ICONS = {
+  menu: Menu,
+  search: Search,
+  plus: Plus,
+  arrowUp: ArrowUp,
+  arrowDown: ArrowDown,
+  star: Star,
+  chevron: ChevronRight,
+  close: X,
+  logout: LogOut,
+}
+
 function Icon({ name, className = 'h-4 w-4' }) {
-  const paths = {
-    menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
-    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
-    plus: <><path d="M12 5v14M5 12h14" /></>,
-    arrowUp: <><path d="M12 19V5m-7 7 7-7 7 7" /></>,
-    arrowDown: <><path d="M12 5v14m7-7-7 7-7-7" /></>,
-    star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
-    chevron: <path d="m9 18 6-6-6-6" />,
-    close: <><path d="m18 6-12 12M6 6l12 12" /></>,
-    logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></>,
-  }
+  const LucideIcon = ICONS[name]
+
+  if (!LucideIcon) return null
 
   return (
-    <svg
+    <LucideIcon
       className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      strokeWidth={1.8}
       aria-hidden="true"
-    >
-      {paths[name]}
-    </svg>
+    />
   )
 }
 
@@ -148,10 +157,12 @@ function MetricCard({ label, value, detail, tone, icon }) {
 }
 
 function Dashboard({ session, onLogout }) {
+  const { pathname } = useLocation()
   const [search, setSearch] = useState('')
-  const [activeNav, setActiveNav] = useState('Dashboard')
   const [notice, setNotice] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const activeNav =
+    NAV_ITEMS.find((item) => item.to === pathname)?.label ?? 'Dashboard'
   const displayName = session?.name?.trim() || session?.email || 'usuario'
   const initials = displayName
     .split(/[\s@.]+/)
@@ -170,10 +181,9 @@ function Dashboard({ session, onLogout }) {
     )
   }, [search])
 
-  function handleNav(item) {
-    setActiveNav(item)
-    if (item !== 'Dashboard') {
-      setNotice(`${item}: esta sección estará disponible próximamente.`)
+  function handleNav(label) {
+    if (label !== 'Dashboard') {
+      setNotice(`${label}: esta sección estará disponible próximamente.`)
     } else {
       setNotice('')
     }
@@ -217,23 +227,24 @@ function Dashboard({ session, onLogout }) {
 
         <nav aria-label="Navegación principal" className="space-y-1">
           {NAV_ITEMS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => handleNav(item)}
+            <Link
+              key={item.label}
+              to={item.to}
+              onClick={() => handleNav(item.label)}
+              aria-current={activeNav === item.label ? 'page' : undefined}
               className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] transition ${
-                activeNav === item
+                activeNav === item.label
                   ? 'bg-white/20 font-semibold text-white'
                   : 'text-white/90 hover:bg-white/10'
               }`}
             >
               <span
                 className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                  activeNav === item ? 'bg-white' : 'bg-white/50'
+                  activeNav === item.label ? 'bg-white' : 'bg-white/50'
                 }`}
               />
-              {item}
-            </button>
+              {item.label}
+            </Link>
           ))}
         </nav>
 
@@ -434,13 +445,13 @@ function Dashboard({ session, onLogout }) {
           <article className="min-w-0 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs font-bold sm:text-sm">Últimas transacciones</h2>
-              <button
-                type="button"
+              <Link
+                to="/app/transacciones"
                 onClick={() => handleNav('Transacciones')}
                 className="flex items-center gap-1 text-[9px] font-semibold text-[#203c91] hover:underline"
               >
                 Ver todas <Icon name="chevron" className="h-3 w-3" />
-              </button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-[minmax(0,1fr)_70px] gap-2 border-b border-slate-100 pb-2 text-[8px] font-medium uppercase tracking-wide text-slate-500 sm:grid-cols-[minmax(120px,1.5fr)_minmax(80px,1fr)_48px_68px]">

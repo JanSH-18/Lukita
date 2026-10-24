@@ -1,76 +1,101 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
 import Dashboard from './page/dashboard'
 import Login from './page/login'
 import Registro from './page/registro'
 import { clearSession, getSession } from './lib/auth'
 
-const ROUTES = ['#/login', '#/registro', '#/app']
+function LoginRoute({ session, onLogin }) {
+  const location = useLocation()
+  const navigate = useNavigate()
 
-function getInitialRoute() {
-  const hash = window.location.hash
-  if (hash === '#/app') return getSession() ? '#/app' : '#/login'
-  if (ROUTES.includes(hash)) return hash
-  return getSession() ? '#/app' : '#/login'
-}
-
-function App() {
-  const [route, setRoute] = useState(getInitialRoute)
-  const [session, setSession] = useState(getSession)
-  const [notice, setNotice] = useState('')
-
-  useEffect(() => {
-    if (!window.location.hash) {
-      window.history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}${window.location.search}${getInitialRoute()}`,
-      )
-    }
-
-    const sync = () => {
-      const nextRoute = window.location.hash || '#/login'
-      const nextSession = getSession()
-
-      if (nextRoute === '#/app' && !nextSession) {
-        setNotice('Inicia sesión para acceder a tus finanzas.')
-      }
-
-      setRoute(nextRoute)
-      setSession(nextSession)
-    }
-
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
-  }, [])
-
-  useEffect(() => {
-    if (route === '#/app' && !session) {
-      window.location.hash = '#/login'
-    } else if (!ROUTES.includes(route)) {
-      window.location.hash = session ? '#/app' : '#/login'
-    }
-  }, [route, session])
-
-  function handleLogout() {
-    clearSession()
-    setSession(null)
-    setNotice('Sesión cerrada correctamente.')
-    window.location.hash = '#/login'
-  }
-
-  if (route === '#/registro') {
-    return <Registro />
-  }
-
-  if (route === '#/app' && session) {
-    return <Dashboard session={session} onLogout={handleLogout} />
+  if (session) {
+    return <Navigate to="/app" replace />
   }
 
   return (
     <Login
-      notice={notice}
-      onDismissNotice={() => setNotice('')}
+      notice={location.state?.notice || ''}
+      onDismissNotice={() =>
+        navigate('/login', { replace: true, state: null })
+      }
+      onLogin={onLogin}
     />
+  )
+}
+
+function RegistroRoute({ session }) {
+  if (session) {
+    return <Navigate to="/app" replace />
+  }
+
+  return <Registro />
+}
+
+function ProtectedRoute({ session, children }) {
+  if (!session) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ notice: 'Inicia sesión para acceder a tus finanzas.' }}
+      />
+    )
+  }
+
+  return children
+}
+
+function App() {
+  const [session, setSession] = useState(getSession)
+  const navigate = useNavigate()
+
+  function handleLogin(user) {
+    setSession(user)
+  }
+
+  function handleLogout() {
+    clearSession()
+    setSession(null)
+    navigate('/login', {
+      replace: true,
+      state: { notice: 'Sesión cerrada correctamente.' },
+    })
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to={session ? '/app' : '/login'} replace />}
+      />
+      <Route
+        path="/login"
+        element={<LoginRoute session={session} onLogin={handleLogin} />}
+      />
+      <Route
+        path="/registro"
+        element={<RegistroRoute session={session} />}
+      />
+      <Route
+        path="/app/*"
+        element={
+          <ProtectedRoute session={session}>
+            <Dashboard session={session} onLogout={handleLogout} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="*"
+        element={<Navigate to={session ? '/app' : '/login'} replace />}
+      />
+    </Routes>
   )
 }
 

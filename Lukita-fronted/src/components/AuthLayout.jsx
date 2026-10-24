@@ -1,19 +1,4 @@
-function CheckIcon({ className }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m5 12 4.5 4.5L19 7" />
-    </svg>
-  )
-}
+import { Check } from 'lucide-react'
 
 function Brand({ size = 'default' }) {
   const isSmall = size === 'small'
@@ -76,7 +61,11 @@ function AuthLayout({ children, title, subtitle }) {
                 className="flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-[#16205c]">
-                  <CheckIcon className="h-3.5 w-3.5" />
+                  <Check
+                    className="h-3.5 w-3.5"
+                    strokeWidth={3}
+                    aria-hidden="true"
+                  />
                 </span>
                 <span className="text-sm font-medium text-white/95">
                   {feature}
