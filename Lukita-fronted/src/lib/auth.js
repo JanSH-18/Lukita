@@ -8,6 +8,18 @@ const DUMMY_HASH =
 
 export const MIN_PASSWORD_LENGTH = 12
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  '10minutemail.com',
+  'guerrillamail.com',
+  'mailinator.com',
+  'tempmail.com',
+  'yopmail.com',
+])
+
+export function isDisposableEmail(email) {
+  const domain = String(email ?? '').trim().toLowerCase().split('@').at(-1)
+  return DISPOSABLE_EMAIL_DOMAINS.has(domain)
+}
 
 function encodeBase64Url(value) {
   const bytes = new TextEncoder().encode(value)

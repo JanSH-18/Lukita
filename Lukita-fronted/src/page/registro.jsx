@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AuthLayout from '../components/AuthLayout'
 import {
   EMAIL_REGEX,
+  isDisposableEmail,
   MIN_PASSWORD_LENGTH,
   isEmailRegistered,
   registerUser,
@@ -111,6 +112,9 @@ function Registro() {
       nextErrors.email = 'El correo es obligatorio.'
     } else if (!EMAIL_REGEX.test(email)) {
       nextErrors.email = 'Ingresa un correo con una sintaxis válida.'
+    } else if (isDisposableEmail(email)) {
+      nextErrors.email =
+        'No se permite registrar correos falsos o dominios sospechosos.'
     } else if (isEmailRegistered(email)) {
       nextErrors.email = 'Este correo ya está registrado.'
     }
@@ -137,6 +141,7 @@ function Registro() {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    if (success) return
     setFormError('')
     setSuccess('')
 
@@ -152,15 +157,7 @@ function Registro() {
         usageType,
       })
 
-      setForm({ name: '', email: '', password: '', confirmPassword: '' })
-      setAcceptedTerms(false)
-      setShowPassword(false)
-      setShowConfirmPassword(false)
-      setSuccess('¡Cuenta creada con éxito! Redirigiendo al inicio de sesión...')
-
-      window.setTimeout(() => {
-        window.location.hash = '#/login'
-      }, 1400)
+      setSuccess('¡Cuenta creada con éxito! Ya puedes iniciar sesión.')
     } catch (error) {
       if (error?.message === 'EMAIL_TAKEN') {
         setErrors((current) => ({
@@ -226,7 +223,13 @@ function Registro() {
             value={form.name}
             onChange={handleChange}
             aria-invalid={Boolean(errors.name)}
-            className={`${inputClass} ${errors.name ? errorInputClass : ''}`}
+            className={`${inputClass} ${
+              errors.name
+                ? errorInputClass
+                : success
+                  ? 'border-green-500 bg-green-50'
+                  : ''
+            }`}
           />
           {errors.name && (
             <p className="mt-1.5 text-[11px] text-red-500">{errors.name}</p>
@@ -249,7 +252,13 @@ function Registro() {
             value={form.email}
             onChange={handleChange}
             aria-invalid={Boolean(errors.email)}
-            className={`${inputClass} ${errors.email ? errorInputClass : ''}`}
+            className={`${inputClass} ${
+              errors.email
+                ? errorInputClass
+                : success
+                  ? 'border-green-500 bg-green-50'
+                  : ''
+            }`}
           />
           {errors.email && (
             <p className="mt-1.5 text-[11px] text-red-500">{errors.email}</p>
@@ -302,13 +311,13 @@ function Registro() {
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
-                placeholder="Mínimo 12 caracteres"
+                placeholder="Mín. 12 caracteres"
                 value={form.password}
                 onChange={handleChange}
                 aria-invalid={Boolean(errors.password)}
-                className={`${inputClass} pr-9 ${
+                className={`${inputClass} pr-9 text-xs ${
                   errors.password ? errorInputClass : ''
-                }`}
+                } ${success ? 'border-green-500 bg-green-50' : ''}`}
               />
               <button
                 type="button"
@@ -346,13 +355,13 @@ function Registro() {
                 name="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete="new-password"
-                placeholder="Repite tu contraseña"
+                placeholder="Repite contraseña"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 aria-invalid={Boolean(errors.confirmPassword)}
-                className={`${inputClass} pr-9 ${
+                className={`${inputClass} pr-9 text-xs ${
                   errors.confirmPassword ? errorInputClass : ''
-                }`}
+                } ${success ? 'border-green-500 bg-green-50' : ''}`}
               />
               <button
                 type="button"
@@ -405,7 +414,14 @@ function Registro() {
         </div>
 
         <button
-          type="submit"
+          type={success ? 'button' : 'submit'}
+          onClick={
+            success
+              ? () => {
+                  window.location.hash = '#/login'
+                }
+              : undefined
+          }
           disabled={loading}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#1f2f7a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#273a92] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f2f7a] disabled:cursor-not-allowed disabled:opacity-70"
         >
@@ -415,7 +431,11 @@ function Registro() {
               aria-hidden="true"
             />
           )}
-          {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+          {loading
+            ? 'Creando cuenta...'
+            : success
+              ? 'Ir a iniciar sesión'
+              : 'Crear cuenta'}
         </button>
       </form>
 

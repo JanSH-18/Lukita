@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import AuthLayout from '../components/AuthLayout'
-import { authenticate, createSession } from '../lib/auth'
+import {
+  authenticate,
+  createSession,
+  EMAIL_REGEX,
+  isDisposableEmail,
+  MIN_PASSWORD_LENGTH,
+} from '../lib/auth'
 
 const inputClass =
   'w-full rounded-lg border border-[#e2e5ea] bg-[#f3f4f6] px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#2f4bb5] focus:bg-white focus:ring-2 focus:ring-[#2f4bb5]/20'
@@ -70,6 +76,8 @@ function Login({ notice, onDismissNotice }) {
   const [form, setForm] = useState({ email: '', password: '' })
   const [remember, setRemember] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [credentialsInvalid, setCredentialsInvalid] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [success, setSuccess] = useState('')
@@ -78,6 +86,8 @@ function Login({ notice, onDismissNotice }) {
   function handleChange(event) {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
+    setFieldErrors((current) => ({ ...current, [name]: '' }))
+    setCredentialsInvalid(false)
     setError('')
     setInfo('')
     setSuccess('')
@@ -95,9 +105,29 @@ function Login({ notice, onDismissNotice }) {
     setError('')
     setInfo('')
     setSuccess('')
+    setCredentialsInvalid(false)
 
-    if (!form.email.trim() || !form.password) {
-      setError('Ingresa tu correo y tu contraseña.')
+    const nextErrors = {}
+    const email = form.email.trim()
+
+    if (!email) {
+      nextErrors.email = 'Ingresa tu correo electrónico.'
+    } else if (!EMAIL_REGEX.test(email)) {
+      nextErrors.email =
+        'Ingresa un correo válido, por ejemplo nombre@dominio.com.'
+    } else if (isDisposableEmail(email)) {
+      nextErrors.email =
+        'No se permite el ingreso con correos falsos o dominios sospechosos.'
+    }
+
+    if (!form.password) {
+      nextErrors.password = 'Ingresa tu contraseña.'
+    } else if (form.password.length < MIN_PASSWORD_LENGTH) {
+      nextErrors.password = `La contraseña debe tener mínimo ${MIN_PASSWORD_LENGTH} caracteres.`
+    }
+
+    setFieldErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
       return
     }
 
@@ -108,6 +138,7 @@ function Login({ notice, onDismissNotice }) {
 
       if (!user) {
         setError('Correo o contraseña incorrectos.')
+        setCredentialsInvalid(true)
         return
       }
 
@@ -201,8 +232,19 @@ function Login({ notice, onDismissNotice }) {
             placeholder="tucorreo@ejemplo.com"
             value={form.email}
             onChange={handleChange}
-            className={inputClass}
+            aria-invalid={Boolean(fieldErrors.email) || credentialsInvalid}
+            aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
+            className={`${inputClass} ${
+              fieldErrors.email || credentialsInvalid
+                ? 'border-red-400 bg-red-50 focus:border-red-400 focus:ring-red-200'
+                : ''
+            }`}
           />
+          {fieldErrors.email && (
+            <p id="login-email-error" className="mt-1.5 text-[11px] text-red-600">
+              {fieldErrors.email}
+            </p>
+          )}
         </div>
 
         <div>
@@ -234,7 +276,17 @@ function Login({ notice, onDismissNotice }) {
               placeholder="••••••••"
               value={form.password}
               onChange={handleChange}
-              className={`${inputClass} pr-11`}
+              aria-invalid={
+                Boolean(fieldErrors.password) || credentialsInvalid
+              }
+              aria-describedby={
+                fieldErrors.password ? 'login-password-error' : undefined
+              }
+              className={`${inputClass} pr-11 ${
+                fieldErrors.password || credentialsInvalid
+                  ? 'border-red-400 bg-red-50 focus:border-red-400 focus:ring-red-200'
+                  : ''
+              }`}
             />
             <button
               type="button"
@@ -252,6 +304,14 @@ function Login({ notice, onDismissNotice }) {
               )}
             </button>
           </div>
+          {fieldErrors.password && (
+            <p
+              id="login-password-error"
+              className="mt-1.5 text-[11px] text-red-600"
+            >
+              {fieldErrors.password}
+            </p>
+          )}
         </div>
 
         <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-600">
