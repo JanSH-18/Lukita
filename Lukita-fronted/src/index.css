@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+.dashboard-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dashboard-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1024px) and (max-height: 850px) {
+  .dashboard-sidebar {
+    padding-block: 0.75rem;
+  }
+
+  .dashboard-brand {
+    margin-bottom: 0.75rem;
+  }
+
+  .dashboard-nav-scroll a {
+    padding-block: 0.5rem;
+  }
+
+  .dashboard-health-card {
+    padding: 0.75rem;
+  }
+
+  .health-percent {
+    font-size: 1.75rem;
+    line-height: 2rem;
+  }
+
+  .dashboard-logout {
+    margin-top: 0.5rem;
+  }
+}

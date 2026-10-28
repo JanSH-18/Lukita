@@ -1,3 +1,4 @@
+// Composicion visual comun de autenticacion para login y registro.
 import { Check } from 'lucide-react'
 
 function Brand({ size = 'default' }) {
@@ -29,6 +30,7 @@ const FEATURES = [
   'Reportes claros para decidir mejor',
 ]
 
+// Recibe el contenido del formulario y lo ubica dentro del diseno compartido.
 function AuthLayout({ children, title, subtitle }) {
   return (
     <main className="flex min-h-screen bg-[#f1f2f4]">

@@ -1,3 +1,4 @@
+// Formulario de inicio de sesion; usa auth.js y entrega la sesion a App.jsx.
 import { useState } from 'react'
 import { Globe } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'

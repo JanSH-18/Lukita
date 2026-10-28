@@ -1,16 +1,53 @@
-# React + Vite
+# Lukita - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interfaz de demostracion para un gestor de finanzas personales y empresariales.
+Esta etapa usa datos de prueba guardados en el navegador; aun no tiene API ni
+base de datos conectadas. La autenticacion local tampoco sustituye seguridad
+de servidor.
 
-Currently, two official plugins are available:
+## Estructura
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```text
+src/
+  main.jsx                 Entrada de React y BrowserRouter
+  App.jsx                  Rutas de login, registro y dashboard protegido
+  components/
+    AuthLayout.jsx         Estructura visual compartida por login y registro
+    AuthControls.jsx       Controles de formulario de autenticacion
+    FinanceUI.jsx          Componentes visuales compartidos del dashboard
+  lib/
+    auth.js                Registro y sesion demo en almacenamiento local
+    financeStore.jsx       Datos iniciales, perfiles y persistencia financiera
+    financeUtils.js        Formato de moneda/fecha y nombres de referencias
+  page/
+    login.jsx              Inicio de sesion
+    registro.jsx           Registro de usuario demo
+    dashboard.jsx          Shell, navegacion y rutas privadas del dashboard
+    dashboardHome.jsx      Resumen principal y graficos
+    finance/
+      index.js             Exportaciones usadas por las rutas del dashboard
+      options.js           Opciones de categorias y cuentas para formularios
+      shared.jsx           Formularios y componentes reutilizados por modulos
+      transactions.jsx     Transacciones, gastos extras y categorias
+      planning.jsx         Presupuestos y metas de ahorro
+      accounts.jsx         Cuentas, perfiles y resumen de dinero
+      recurring.jsx        Pagos y cobros recurrentes
+      reports.jsx          Reportes y exportacion
+      settings.jsx         Preferencias y opciones adicionales
+```
 
-## React Compiler
+## Donde hacer cambios
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Rutas, menu o estructura general del dashboard: `src/page/dashboard.jsx`.
+- Una pantalla financiera: el archivo correspondiente dentro de
+  `src/page/finance/`; sus exportaciones llegan al router mediante `index.js`.
+- Estilo y controles visuales comunes: `src/components/FinanceUI.jsx`.
+- Semillas, perfiles o guardado de datos demo: `src/lib/financeStore.jsx`.
+- Login, registro y sesion local: `src/page/login.jsx`,
+  `src/page/registro.jsx` y `src/lib/auth.js`.
 
-## Expanding the ESLint configuration
+## Comandos
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `npm run dev`: inicia el servidor local de Vite.
+- `npm run lint`: revisa el codigo con ESLint.
+- `npm run build`: genera la version de produccion en `dist/`.

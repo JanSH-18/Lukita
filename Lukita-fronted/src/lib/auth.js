@@ -1,3 +1,4 @@
+// Autenticacion de demostracion: usuarios y sesion se guardan en el navegador.
 import { compare, hash } from 'bcryptjs'
 
 const USERS_KEY = 'lukita_users'
@@ -21,6 +22,7 @@ export function isDisposableEmail(email) {
   return DISPOSABLE_EMAIL_DOMAINS.has(domain)
 }
 
+// Codificacion necesaria para crear una sesion local con formato similar a JWT.
 function encodeBase64Url(value) {
   const bytes = new TextEncoder().encode(value)
   let binary = ''

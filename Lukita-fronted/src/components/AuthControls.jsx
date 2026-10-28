@@ -1,3 +1,4 @@
+// Estilos y controles pequenos compartidos por login y registro.
 import { Eye, EyeOff } from 'lucide-react'
 
 export const inputClass =

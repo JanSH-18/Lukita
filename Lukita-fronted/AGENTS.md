@@ -4,8 +4,8 @@
 - Vite 8 + React 19, plain JavaScript/JSX. No TypeScript, no test suite.
 - Tailwind CSS v4 via the `@tailwindcss/vite` plugin in `vite.config.js`.
 - Entry flow: `index.html` -> `src/main.jsx` -> `src/App.jsx`.
-- `src/index.css` holds global styles (currently only `@import "tailwindcss";`); `src/App.css` holds component styles.
-- `README.md` is the stock Vite template; trust `package.json` and `vite.config.js` over it.
+- `src/index.css` holds global styles (currently only `@import "tailwindcss";`); component styling uses Tailwind classes in JSX.
+- `README.md` documents the current frontend structure and where to make changes.
 
 ## Commands
 - `npm run dev` - Vite dev server (default http://localhost:5173)
@@ -27,4 +27,4 @@
 - Do not copy existing class names such as `text-3x1` and `text-blue 600` in `src/App.jsx` - they are invalid Tailwind (likely meant `text-3xl` / `text-blue-600`).
 - Files in `public/` are served at `/` (`/icons.svg`, `/favicon.svg`); images imported by components live in `src/assets/`.
 - `dist/` is ignored by Git and ESLint.
-- This directory is not a Git repository, so there is no commit history or Git workflow here.
+- `Lukita-fronted` is the frontend subproject; the Git repository root is its parent directory (`Lukita`).

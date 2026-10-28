@@ -1,3 +1,4 @@
+// Punto de entrada: carga estilos globales y monta el router de la aplicacion.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

@@ -1,3 +1,4 @@
+// Define las rutas publicas y protege el dashboard segun la sesion demo.
 import { useState } from 'react'
 import {
   Navigate,
@@ -60,6 +61,7 @@ function App() {
     setSession(user)
   }
 
+  // La sesion vive en estado React; auth.js gestiona su persistencia local.
   function handleLogout() {
     clearSession()
     setSession(null)

@@ -1,3 +1,4 @@
+// Registro de usuario demo; valida el formulario y delega el guardado a auth.js.
 import { useState } from 'react'
 import { Globe } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
