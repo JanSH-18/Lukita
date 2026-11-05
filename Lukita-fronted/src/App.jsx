@@ -57,8 +57,10 @@ function App() {
   const [session, setSession] = useState(getSession)
   const navigate = useNavigate()
 
-  function handleLogin(user) {
-    setSession(user)
+  // Se lee la sesion guardada para que siempre tenga la misma forma (datos del
+  // token), tanto al iniciar sesion como al recargar la pagina.
+  function handleLogin() {
+    setSession(getSession())
   }
 
   // La sesion vive en estado React; auth.js gestiona su persistencia local.

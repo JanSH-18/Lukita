@@ -1,11 +1,13 @@
-// Formulario de inicio de sesion; usa auth.js y entrega la sesion a App.jsx.
-import { useState } from 'react'
-import { Globe } from 'lucide-react'
+// Inicio de sesion (HU-2): valida el formulario, abre la sesion y entra al dashboard.
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import {
-  inputClass,
-  PasswordVisibilityIcon,
+  AuthAlert,
+  AuthField,
+  AuthSubmitButton,
+  PasswordField,
+  SocialLogin,
 } from '../components/AuthControls'
 import {
   authenticate,
@@ -15,90 +17,93 @@ import {
   MIN_PASSWORD_LENGTH,
 } from '../lib/auth'
 
+const REDIRECT_DELAY_MS = 1000
+
+function validateLogin({ email, password }) {
+  const errors = {}
+  const cleanEmail = email.trim()
+
+  if (!cleanEmail) {
+    errors.email = 'Ingresa tu correo electrónico.'
+  } else if (!EMAIL_REGEX.test(cleanEmail)) {
+    errors.email = 'Ingresa un correo válido, por ejemplo nombre@dominio.com.'
+  } else if (isDisposableEmail(cleanEmail)) {
+    errors.email = 'No se permite el ingreso con correos falsos o dominios sospechosos.'
+  }
+
+  if (!password) {
+    errors.password = 'Ingresa tu contraseña.'
+  } else if (password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = `La contraseña debe tener mínimo ${MIN_PASSWORD_LENGTH} caracteres.`
+  }
+
+  return errors
+}
+
 function Login({ notice, onDismissNotice, onLogin }) {
   const navigate = useNavigate()
+  const redirectTimer = useRef(null)
   const [form, setForm] = useState({ email: '', password: '' })
   const [remember, setRemember] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [credentialsInvalid, setCredentialsInvalid] = useState(false)
-  const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
-  const [success, setSuccess] = useState('')
+  // Un solo mensaje a la vez: { tone: 'error' | 'info' | 'success', text }
+  const [alert, setAlert] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Si se sale de la pantalla antes de redirigir, se cancela el temporizador.
+  useEffect(() => () => window.clearTimeout(redirectTimer.current), [])
+
   function handleChange(event) {
+    if (loading) return
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
     setFieldErrors((current) => ({ ...current, [name]: '' }))
     setCredentialsInvalid(false)
-    setError('')
-    setInfo('')
-    setSuccess('')
-    onDismissNotice?.()
+    setAlert(null)
+    if (notice) onDismissNotice?.()
   }
 
-  function showInfo(message) {
-    setError('')
-    setSuccess('')
-    setInfo(message)
-  }
+  const showInfo = (text) => setAlert({ tone: 'info', text })
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
-    setInfo('')
-    setSuccess('')
+    if (loading) return
+    setAlert(null)
     setCredentialsInvalid(false)
 
-    const nextErrors = {}
-    const email = form.email.trim()
-
-    if (!email) {
-      nextErrors.email = 'Ingresa tu correo electrónico.'
-    } else if (!EMAIL_REGEX.test(email)) {
-      nextErrors.email =
-        'Ingresa un correo válido, por ejemplo nombre@dominio.com.'
-    } else if (isDisposableEmail(email)) {
-      nextErrors.email =
-        'No se permite el ingreso con correos falsos o dominios sospechosos.'
-    }
-
-    if (!form.password) {
-      nextErrors.password = 'Ingresa tu contraseña.'
-    } else if (form.password.length < MIN_PASSWORD_LENGTH) {
-      nextErrors.password = `La contraseña debe tener mínimo ${MIN_PASSWORD_LENGTH} caracteres.`
-    }
-
-    setFieldErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) {
-      return
-    }
+    const errors = validateLogin(form)
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
 
     setLoading(true)
-
     try {
       const user = await authenticate(form.email, form.password)
 
       if (!user) {
-        setError('Correo o contraseña incorrectos.')
+        setAlert({ tone: 'error', text: 'Correo o contraseña incorrectos.' })
         setCredentialsInvalid(true)
+        setLoading(false)
         return
       }
 
       createSession(user, remember)
       const displayName = user.name?.trim() || user.email
-      setSuccess(
-        `¡Inicio de sesión exitoso! Bienvenido, ${displayName}. Redirigiendo...`,
-      )
+      setAlert({
+        tone: 'success',
+        text: `¡Inicio de sesión exitoso! Bienvenido, ${displayName}. Redirigiendo...`,
+      })
 
-      window.setTimeout(() => {
-        onLogin?.(user)
+      // El boton sigue bloqueado hasta cambiar de pantalla (evita doble envio).
+      redirectTimer.current = window.setTimeout(() => {
+        onLogin()
         navigate('/app', { replace: true })
-      }, 1000)
+      }, REDIRECT_DELAY_MS)
     } catch {
-      setError('No pudimos verificar tus datos. Inténtalo de nuevo.')
-    } finally {
+      setAlert({
+        tone: 'error',
+        text: 'No pudimos verificar tus datos. Inténtalo de nuevo.',
+      })
       setLoading(false)
     }
   }
@@ -117,146 +122,47 @@ function Login({ notice, onDismissNotice, onLogin }) {
         </p>
       </header>
 
-      {notice && (
-        <div
-          role="status"
-          className="mb-5 flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700"
-        >
-          <span>{notice}</span>
-          <button
-            type="button"
-            onClick={onDismissNotice}
-            aria-label="Cerrar mensaje"
-            className="rounded text-emerald-500 transition hover:text-emerald-700"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div
-          role="alert"
-          className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
-        >
-          {error}
-        </div>
-      )}
-
-      {info && (
-        <div
-          role="status"
-          className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-sm text-blue-700"
-        >
-          {info}
-        </div>
-      )}
-
-      {success && (
-        <div
-          role="status"
-          className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700"
-        >
-          {success}
-        </div>
-      )}
+      <AuthAlert tone="success" onClose={onDismissNotice}>
+        {notice}
+      </AuthAlert>
+      <AuthAlert tone={alert?.tone}>{alert?.text}</AuthAlert>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <div>
-          <label
-            htmlFor="login-email"
-            className="mb-1.5 block text-xs font-semibold text-slate-700"
-          >
-            Correo electrónico
-          </label>
-          <input
-            id="login-email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            placeholder="tucorreo@ejemplo.com"
-            value={form.email}
-            onChange={handleChange}
-            aria-invalid={Boolean(fieldErrors.email) || credentialsInvalid}
-            aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
-            className={`${inputClass} ${
-              fieldErrors.email || credentialsInvalid
-                ? 'border-red-400 bg-red-50 focus:border-red-400 focus:ring-red-200'
-                : ''
-            }`}
-          />
-          {fieldErrors.email && (
-            <p id="login-email-error" className="mt-1.5 text-[11px] text-red-600">
-              {fieldErrors.email}
-            </p>
-          )}
-        </div>
+        <AuthField
+          id="login-email"
+          name="email"
+          type="email"
+          label="Correo electrónico"
+          autoComplete="username"
+          placeholder="tucorreo@ejemplo.com"
+          value={form.email}
+          onChange={handleChange}
+          error={fieldErrors.email}
+          invalid={credentialsInvalid}
+        />
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-3">
-            <label
-              htmlFor="login-password"
-              className="block text-xs font-semibold text-slate-700"
-            >
-              Contraseña
-            </label>
+        <PasswordField
+          id="login-password"
+          name="password"
+          label="Contraseña"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={form.password}
+          onChange={handleChange}
+          error={fieldErrors.password}
+          invalid={credentialsInvalid}
+          labelAction={
             <button
               type="button"
               onClick={() =>
-                showInfo(
-                  'La recuperación de contraseña estará disponible próximamente.',
-                )
+                showInfo('La recuperación de contraseña estará disponible próximamente.')
               }
               className="text-xs font-medium text-[#1f3fa8] transition hover:text-[#162d7d]"
             >
               ¿Olvidaste tu contraseña?
             </button>
-          </div>
-          <div className="relative">
-            <input
-              id="login-password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={handleChange}
-              aria-invalid={
-                Boolean(fieldErrors.password) || credentialsInvalid
-              }
-              aria-describedby={
-                fieldErrors.password ? 'login-password-error' : undefined
-              }
-              className={`${inputClass} pr-11 ${
-                fieldErrors.password || credentialsInvalid
-                  ? 'border-red-400 bg-red-50 focus:border-red-400 focus:ring-red-200'
-                  : ''
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((value) => !value)}
-              aria-label={
-                showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
-              }
-              aria-pressed={showPassword}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-[#2f4bb5]"
-            >
-              <PasswordVisibilityIcon
-                visible={showPassword}
-                className="h-4 w-4"
-              />
-            </button>
-          </div>
-          {fieldErrors.password && (
-            <p
-              id="login-password-error"
-              className="mt-1.5 text-[11px] text-red-600"
-            >
-              {fieldErrors.password}
-            </p>
-          )}
-        </div>
+          }
+        />
 
         <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-600">
           <input
@@ -268,37 +174,14 @@ function Login({ notice, onDismissNotice, onLogin }) {
           Recordarme en este equipo
         </label>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#1f2f7a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#273a92] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f2f7a] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {loading && (
-            <span
-              className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-              aria-hidden="true"
-            />
-          )}
-          {loading ? 'Verificando...' : 'Iniciar sesión'}
-        </button>
+        <AuthSubmitButton loading={loading} loadingText="Verificando...">
+          Iniciar sesión
+        </AuthSubmitButton>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
-        <span className="h-px flex-1 bg-slate-200" />
-        <span className="text-[11px] text-slate-400">o continúa con</span>
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <button
-        type="button"
-        onClick={() =>
-          showInfo('El acceso con Google estará disponible próximamente.')
-        }
-        className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-      >
-        <Globe className="h-4 w-4" aria-hidden="true" />
-        Continuar con Google
-      </button>
+      <SocialLogin
+        onClick={() => showInfo('El acceso con Google estará disponible próximamente.')}
+      />
 
       <p className="mt-6 text-center text-xs text-slate-500">
         ¿No tienes cuenta?{' '}

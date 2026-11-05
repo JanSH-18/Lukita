@@ -1,121 +1,50 @@
-// Semillas, persistencia local y contexto consumido por las paginas financieras.
+// Contexto financiero: guarda en el navegador los datos demo de cada usuario.
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createInitialState } from './financeSeed'
+import { formatCurrency } from './financeUtils'
 
-const STORAGE_KEY = 'lukita_finance_demo_v1'
+const STORAGE_PREFIX = 'lukita_finance_demo_v1'
 const FinanceContext = createContext(null)
 
-// Datos ilustrativos usados al iniciar cada perfil por primera vez.
-const initialCategories = [
-  { id: 'cat-food', name: 'Alimentación', type: 'expense', color: 'amber', system: true },
-  { id: 'cat-transport', name: 'Transporte', type: 'expense', color: 'red', system: true },
-  { id: 'cat-study', name: 'Estudios', type: 'expense', color: 'blue', system: true },
-  { id: 'cat-leisure', name: 'Ocio', type: 'expense', color: 'indigo', system: true },
-  { id: 'cat-home', name: 'Vivienda', type: 'expense', color: 'blue', system: true },
-  { id: 'cat-health', name: 'Salud', type: 'expense', color: 'emerald', system: true },
-  { id: 'cat-salary', name: 'Sueldo', type: 'income', color: 'emerald', system: true },
-  { id: 'cat-extra-income', name: 'Ingresos extra', type: 'income', color: 'emerald', system: true },
-]
+// Cada usuario usa su propia clave, asi dos cuentas no comparten datos.
+const storageKeyFor = (userKey) =>
+  `${STORAGE_PREFIX}:${String(userKey).trim().toLowerCase()}`
 
-const initialTransactions = [
-  { id: 'tx-1', description: 'Pago de sueldo', type: 'income', amount: 3200, categoryId: 'cat-salary', accountId: 'acc-bank', date: '2026-10-14', extra: false },
-  { id: 'tx-2', description: 'Alquiler de departamento', type: 'expense', amount: 900, categoryId: 'cat-home', accountId: 'acc-bank', date: '2026-10-12', extra: false },
-  { id: 'tx-3', description: 'Supermercado', type: 'expense', amount: 85.4, categoryId: 'cat-food', accountId: 'acc-cash', date: '2026-10-11', extra: false },
-  { id: 'tx-4', description: 'Recarga de transporte', type: 'expense', amount: 25, categoryId: 'cat-transport', accountId: 'acc-card', date: '2026-10-10', extra: false },
-  { id: 'tx-5', description: 'Venta freelance', type: 'income', amount: 450, categoryId: 'cat-extra-income', accountId: 'acc-bank', date: '2026-10-09', extra: false },
-  { id: 'tx-6', description: 'Entradas de cine', type: 'expense', amount: 32, categoryId: 'cat-leisure', accountId: 'acc-cash', date: '2026-10-08', extra: true },
-  { id: 'tx-7', description: 'Curso de inglés', type: 'expense', amount: 120, categoryId: 'cat-study', accountId: 'acc-card', date: '2026-10-06', extra: false },
-  { id: 'tx-8', description: 'Cena con amigos', type: 'expense', amount: 64.5, categoryId: 'cat-leisure', accountId: 'acc-cash', date: '2026-10-05', extra: true },
-]
-
-function createProfileData() {
-  return {
-    categories: initialCategories.map((item) => ({ ...item })),
-    transactions: initialTransactions.map((item) => ({ ...item })),
-    budgets: [
-      { id: 'budget-1', categoryId: 'cat-food', limit: 500 },
-      { id: 'budget-2', categoryId: 'cat-transport', limit: 120 },
-      { id: 'budget-3', categoryId: 'cat-home', limit: 1200 },
-      { id: 'budget-4', categoryId: 'cat-leisure', limit: 200 },
-      { id: 'budget-5', categoryId: 'cat-study', limit: 300 },
-      { id: 'budget-6', categoryId: 'cat-health', limit: 180 },
-    ],
-    goals: [
-      { id: 'goal-1', name: 'Viaje de vacaciones', target: 3000, saved: 2040, dueDate: '2026-12-31' },
-      { id: 'goal-2', name: 'Laptop nueva', target: 2500, saved: 850, dueDate: '2027-06-30' },
-      { id: 'goal-3', name: 'Fondo de emergencia', target: 1500, saved: 1200, dueDate: '2027-03-31' },
-      { id: 'goal-4', name: 'Curso de programación', target: 300, saved: 300, dueDate: '2026-09-15' },
-    ],
-    accounts: [
-      { id: 'acc-cash', name: 'Efectivo', type: 'Efectivo', balance: 240 },
-      { id: 'acc-bank', name: 'BCP Ahorros', type: 'Banco', balance: 7300 },
-      { id: 'acc-card', name: 'Tarjeta Visa', type: 'Tarjeta', balance: 2300 },
-    ],
-    recurring: [
-      { id: 'rec-1', name: 'Alquiler de departamento', type: 'expense', amount: 900, accountId: 'acc-bank', frequency: 'Mensual', nextDate: '2026-11-01', active: true },
-      { id: 'rec-2', name: 'Netflix', type: 'expense', amount: 15.99, accountId: 'acc-card', frequency: 'Mensual', nextDate: '2026-10-24', active: true },
-      { id: 'rec-3', name: 'Sueldo', type: 'income', amount: 3200, accountId: 'acc-bank', frequency: 'Mensual', nextDate: '2026-10-30', active: true },
-      { id: 'rec-4', name: 'Seguro de salud', type: 'expense', amount: 480, accountId: 'acc-bank', frequency: 'Anual', nextDate: '2027-03-12', active: true },
-      { id: 'rec-5', name: 'Gimnasio', type: 'expense', amount: 35, accountId: 'acc-card', frequency: 'Mensual', nextDate: '', active: false },
-      { id: 'rec-6', name: 'Ahorro automático', type: 'expense', amount: 20, accountId: 'acc-bank', frequency: 'Semanal', nextDate: '2026-10-25', active: true },
-    ],
-    monthlyIncome: 8500,
-    preferences: {
-      currency: 'USD',
-      language: 'Español',
-      dateFormat: 'dd/mm/aaaa',
-      budgetAlerts: true,
-      recurringAlerts: true,
-      fixedExpenseAlerts: true,
-      weeklySummary: false,
-    },
-  }
-}
-
-// Cada perfil recibe copias independientes para evitar mezclar sus cambios.
-function createInitialState() {
-  const personal = createProfileData()
-  const business = createProfileData()
-  business.categories = business.categories.filter((category) => category.type === 'income' || category.name !== 'Vivienda')
-  business.categories.push({ id: 'cat-business', name: 'Operaciones', type: 'expense', color: 'indigo', system: true })
-  return { activeProfile: 'personal', profiles: { personal, empresarial: business } }
-}
-
-// Recupera el estado del navegador o vuelve a las semillas si no es valido.
-function readState() {
+// Recupera lo guardado o vuelve a los datos de ejemplo si no es valido.
+function readState(storageKey) {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(storageKey)
     if (!stored) return createInitialState()
     const parsed = JSON.parse(stored)
-    if (!parsed?.profiles?.personal || !parsed?.profiles?.empresarial) {
-      return createInitialState()
-    }
-    return parsed
+    const hasProfiles = parsed?.profiles?.personal && parsed?.profiles?.empresarial
+    return hasProfiles ? parsed : createInitialState()
   } catch {
     return createInitialState()
   }
 }
 
-export function FinanceProvider({ children }) {
-  const [state, setState] = useState(readState)
+export function FinanceProvider({ userKey, children }) {
+  const storageKey = storageKeyFor(userKey)
+  const [state, setState] = useState(() => readState(storageKey))
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      localStorage.setItem(storageKey, JSON.stringify(state))
     } catch (error) {
       console.error('No se pudieron guardar los datos demo en el navegador.', error)
     }
-  }, [state])
+  }, [storageKey, state])
 
-  // Expone operaciones comunes para que cada pantalla actualice su perfil activo.
+  // Operaciones comunes: cada pantalla modifica solo el perfil activo.
   const value = useMemo(() => {
     const data = state.profiles[state.activeProfile]
+
     function updateData(updater) {
       setState((current) => {
         const profile = current.activeProfile
-        const nextData = updater(current.profiles[profile])
         return {
           ...current,
-          profiles: { ...current.profiles, [profile]: nextData },
+          profiles: { ...current.profiles, [profile]: updater(current.profiles[profile]) },
         }
       })
     }
@@ -123,15 +52,19 @@ export function FinanceProvider({ children }) {
     return {
       data,
       profile: state.activeProfile,
-      setProfile: (profile) => setState((current) => ({ ...current, activeProfile: profile })),
+      setProfile: (profile) =>
+        setState((current) => ({ ...current, activeProfile: profile })),
       updateData,
+      // Formatea montos con la moneda elegida en Configuracion.
+      money: (amount) => formatCurrency(amount, data.preferences.currency),
+      // Agrega el elemento al inicio o reemplaza el que tenga el mismo id.
       upsert: (collection, item) =>
         updateData((current) => {
           const exists = current[collection].some((entry) => entry.id === item.id)
           return {
             ...current,
             [collection]: exists
-              ? current[collection].map((entry) => entry.id === item.id ? item : entry)
+              ? current[collection].map((entry) => (entry.id === item.id ? item : entry))
               : [item, ...current[collection]],
           }
         }),
@@ -140,19 +73,21 @@ export function FinanceProvider({ children }) {
           ...current,
           [collection]: current[collection].filter((entry) => entry.id !== id),
         })),
-      setMonthlyIncome: (amount) => updateData((current) => ({ ...current, monthlyIncome: amount })),
+      setMonthlyIncome: (amount) =>
+        updateData((current) => ({ ...current, monthlyIncome: amount })),
       updatePreferences: (preferences) =>
         updateData((current) => ({
           ...current,
           preferences: { ...current.preferences, ...preferences },
         })),
+      resetData: () => setState(createInitialState()),
     }
   }, [state])
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>
 }
 
-// The provider and its context hook intentionally live together.
+// El proveedor y su hook viven juntos a proposito.
 // eslint-disable-next-line react-refresh/only-export-components
 export function useFinance() {
   const context = useContext(FinanceContext)
