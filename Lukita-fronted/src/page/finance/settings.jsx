@@ -12,6 +12,8 @@ import {
 } from '../../components/FinanceUI'
 import { useFinance } from '../../lib/financeStore'
 import { PROFILES, PROFILE_LABELS } from '../../lib/financeUtils'
+import { getUserRuc, updateUserRuc } from '../../lib/auth'
+import { getRucError, onlyDigits, RUC_LENGTH_DIGITS } from '../../lib/ruc'
 
 const toOptions = (values) => values.map((value) => ({ value, label: value }))
 
@@ -59,9 +61,23 @@ const MORE_ITEMS = [
 // ---------------------------------------------------------------------------
 // Configuracion
 // ---------------------------------------------------------------------------
-function ProfileCard({ session, onNotice }) {
+function ProfileCard({ session, profile, onNotice }) {
   const [name, setName] = useState(session?.name ?? '')
+  const [ruc, setRuc] = useState(() => getUserRuc(session?.email))
+  const [rucError, setRucError] = useState('')
   const initials = (name || session?.email || 'LU').slice(0, 2).toUpperCase()
+  const isBusiness = profile === 'empresarial'
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    // El RUC es opcional aqui, pero si se escribe debe ser valido.
+    if (isBusiness && ruc) {
+      const message = getRucError(ruc)
+      if (message) return setRucError(message)
+    }
+    if (isBusiness) updateUserRuc(session.email, ruc)
+    onNotice('Perfil demo actualizado para esta pantalla.')
+  }
 
   return (
     <Card>
@@ -81,19 +97,27 @@ function ProfileCard({ session, onNotice }) {
           </Button>
         </div>
       </div>
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          onNotice('Perfil demo actualizado para esta pantalla.')
-        }}
-      >
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <Field
           label="Nombre completo"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
         <Field label="Correo electrónico" value={session?.email ?? ''} readOnly />
+        {isBusiness && (
+          <Field
+            label="RUC de la empresa"
+            inputMode="numeric"
+            maxLength={RUC_LENGTH_DIGITS}
+            placeholder="Ej. 20123456789"
+            value={ruc}
+            onChange={(event) => {
+              setRuc(onlyDigits(event.target.value))
+              setRucError('')
+            }}
+            error={rucError}
+          />
+        )}
         <Button type="submit" className="w-full">
           Guardar cambios
         </Button>
@@ -117,7 +141,7 @@ function SecurityCard({ onNotice }) {
         }}
       >
         <Field label="Contraseña actual" type="password" placeholder="••••••••••••" />
-        <Field label="Nueva contraseña" type="password" placeholder="Mínimo 12 caracteres" />
+        <Field label="Nueva contraseña" type="password" placeholder="Mínimo 8 caracteres" />
         <Field
           label="Confirmar nueva contraseña"
           type="password"
@@ -185,13 +209,20 @@ function NotificationsCard({ preferences, onChange }) {
 }
 
 export function SettingsPage({ session, onLogout }) {
-  const { data, updatePreferences, resetData } = useFinance()
+  const { data, profile, updatePreferences, loadDemoData, clearData } = useFinance()
   const [notice, setNotice] = useState('')
 
-  function handleReset() {
-    if (window.confirm('¿Borrar todos los datos financieros demo de este navegador?')) {
-      resetData()
-      setNotice('Los datos demo se restablecieron.')
+  function handleLoadDemo() {
+    if (window.confirm('Esto reemplazará tus datos actuales por datos de ejemplo. ¿Continuar?')) {
+      loadDemoData()
+      setNotice('Se cargaron los datos de ejemplo.')
+    }
+  }
+
+  function handleClear() {
+    if (window.confirm('¿Borrar todos tus datos financieros de este navegador?')) {
+      clearData()
+      setNotice('Tus datos se borraron: la cuenta quedó vacía.')
     }
   }
 
@@ -205,7 +236,7 @@ export function SettingsPage({ session, onLogout }) {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <div className="space-y-5">
-          <ProfileCard session={session} onNotice={setNotice} />
+          <ProfileCard session={session} profile={profile} onNotice={setNotice} />
           <SecurityCard onNotice={setNotice} />
         </div>
         <div className="space-y-5">
@@ -214,15 +245,18 @@ export function SettingsPage({ session, onLogout }) {
           <Card className="bg-rose-50">
             <h2 className="text-lg font-bold">Sesión y cuenta</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Cierra sesión en este equipo o elimina los datos demo almacenados en este
-              navegador.
+              Cierra sesión en este equipo, carga datos de ejemplo para explorar la app o
+              borra todos tus datos para empezar de cero.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={onLogout}>
                 Cerrar sesión
               </Button>
-              <Button variant="danger" onClick={handleReset}>
-                Reiniciar datos demo
+              <Button variant="secondary" onClick={handleLoadDemo}>
+                Cargar datos de ejemplo
+              </Button>
+              <Button variant="danger" onClick={handleClear}>
+                Borrar mis datos
               </Button>
             </div>
           </Card>

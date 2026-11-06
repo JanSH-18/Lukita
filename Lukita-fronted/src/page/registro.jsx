@@ -1,5 +1,5 @@
 // Registro de usuario (HU-1): valida el formulario y delega el guardado a auth.js.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import {
@@ -9,58 +9,23 @@ import {
   PasswordField,
   SocialLogin,
 } from '../components/AuthControls'
-import {
-  EMAIL_REGEX,
-  isDisposableEmail,
-  isEmailRegistered,
-  MIN_PASSWORD_LENGTH,
-  registerUser,
-} from '../lib/auth'
+import { MIN_PASSWORD_LENGTH, registerUser } from '../lib/auth'
+import { validateRegistro } from '../lib/authValidation'
+import { getRucError, onlyDigits, RUC_LENGTH_DIGITS } from '../lib/ruc'
 
 const USAGE_TYPES = [
   { value: 'personal', label: 'Personal' },
   { value: 'empresarial', label: 'Empresarial' },
 ]
 
-const EMPTY_FORM = { name: '', email: '', password: '', confirmPassword: '' }
+const REDIRECT_DELAY_MS = 2000
+const CREATED_NOTICE = 'Cuenta creada con éxito. Inicia sesión para continuar.'
 
-function validateRegistro(form, acceptedTerms) {
-  const errors = {}
-  const email = form.email.trim().toLowerCase()
-
-  if (!form.name.trim()) errors.name = 'Ingresa tu nombre completo.'
-
-  if (!email) {
-    errors.email = 'El correo es obligatorio.'
-  } else if (!EMAIL_REGEX.test(email)) {
-    errors.email = 'Ingresa un correo con una sintaxis válida.'
-  } else if (isDisposableEmail(email)) {
-    errors.email = 'No se permite registrar correos falsos o dominios sospechosos.'
-  } else if (isEmailRegistered(email)) {
-    errors.email = 'Este correo ya está registrado.'
-  }
-
-  if (!form.password) {
-    errors.password = 'La contraseña es obligatoria.'
-  } else if (form.password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `Mínimo ${MIN_PASSWORD_LENGTH} caracteres.`
-  }
-
-  if (!form.confirmPassword) {
-    errors.confirmPassword = 'Confirma tu contraseña.'
-  } else if (form.password !== form.confirmPassword) {
-    errors.confirmPassword = 'Las contraseñas no coinciden.'
-  }
-
-  if (!acceptedTerms) {
-    errors.terms = 'Debes aceptar los términos y la política de privacidad.'
-  }
-
-  return errors
-}
+const EMPTY_FORM = { name: '', email: '', ruc: '', password: '', confirmPassword: '' }
 
 function Registro() {
   const navigate = useNavigate()
+  const redirectTimer = useRef(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [usageType, setUsageType] = useState('personal')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -69,6 +34,9 @@ function Registro() {
   const [alert, setAlert] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Si se sale de la pantalla antes de redirigir, se cancela el temporizador.
+  useEffect(() => () => window.clearTimeout(redirectTimer.current), [])
+
   const created = alert?.tone === 'success'
   // Con la cuenta creada el formulario queda bloqueado: no se puede enviar dos veces.
   const locked = loading || created
@@ -76,9 +44,22 @@ function Registro() {
   function handleChange(event) {
     if (locked) return
     const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    // El RUC solo admite numeros.
+    const nextValue = name === 'ruc' ? onlyDigits(value) : value
+    setForm((current) => ({ ...current, [name]: nextValue }))
     setErrors((current) => ({ ...current, [name]: '' }))
     setAlert(null)
+  }
+
+  // Lleva al inicio de sesion (a mano con el boton o solo tras unos segundos).
+  function goToLogin() {
+    window.clearTimeout(redirectTimer.current)
+    navigate('/login', { replace: true, state: { notice: CREATED_NOTICE } })
+  }
+
+  function handleUsageChange(value) {
+    setUsageType(value)
+    setErrors((current) => ({ ...current, ruc: '' }))
   }
 
   function handleTermsChange(event) {
@@ -92,7 +73,7 @@ function Registro() {
     if (locked) return
     setAlert(null)
 
-    const nextErrors = validateRegistro(form, acceptedTerms)
+    const nextErrors = validateRegistro(form, usageType, acceptedTerms)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -101,11 +82,14 @@ function Registro() {
       await registerUser({ ...form, usageType })
       setAlert({
         tone: 'success',
-        text: '¡Cuenta creada con éxito! Ya puedes iniciar sesión.',
+        text: '¡Cuenta creada con éxito! Te llevaremos al inicio de sesión...',
       })
+      redirectTimer.current = window.setTimeout(goToLogin, REDIRECT_DELAY_MS)
     } catch (error) {
       if (error?.message === 'EMAIL_TAKEN') {
         setErrors((current) => ({ ...current, email: 'Este correo ya está registrado.' }))
+      } else if (error?.message === 'INVALID_RUC') {
+        setErrors((current) => ({ ...current, ruc: getRucError(form.ruc) }))
       } else {
         setAlert({
           tone: 'error',
@@ -172,7 +156,7 @@ function Registro() {
                 key={value}
                 type="button"
                 disabled={locked}
-                onClick={() => setUsageType(value)}
+                onClick={() => handleUsageChange(value)}
                 aria-pressed={usageType === value}
                 className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                   usageType === value
@@ -186,12 +170,25 @@ function Registro() {
           </div>
         </div>
 
+        {usageType === 'empresarial' && (
+          <AuthField
+            id="reg-ruc"
+            type="text"
+            inputMode="numeric"
+            maxLength={RUC_LENGTH_DIGITS}
+            label="RUC de la empresa"
+            autoComplete="off"
+            placeholder="Ej. 20123456789"
+            {...field('ruc')}
+          />
+        )}
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <PasswordField
             id="reg-password"
             label="Contraseña"
             autoComplete="new-password"
-            placeholder="Mín. 12 caracteres"
+            placeholder={`Mín. ${MIN_PASSWORD_LENGTH} caracteres`}
             compact
             {...field('password')}
           />
@@ -231,7 +228,7 @@ function Registro() {
           // Tras crear la cuenta, el boton lleva al inicio de sesion.
           <button
             type="button"
-            onClick={() => navigate('/login', { replace: true })}
+            onClick={goToLogin}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#1f2f7a] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#273a92] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f2f7a]"
           >
             Ir a iniciar sesión

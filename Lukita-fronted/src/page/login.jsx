@@ -9,36 +9,10 @@ import {
   PasswordField,
   SocialLogin,
 } from '../components/AuthControls'
-import {
-  authenticate,
-  createSession,
-  EMAIL_REGEX,
-  isDisposableEmail,
-  MIN_PASSWORD_LENGTH,
-} from '../lib/auth'
+import { authenticate, createSession } from '../lib/auth'
+import { validateLogin } from '../lib/authValidation'
 
 const REDIRECT_DELAY_MS = 1000
-
-function validateLogin({ email, password }) {
-  const errors = {}
-  const cleanEmail = email.trim()
-
-  if (!cleanEmail) {
-    errors.email = 'Ingresa tu correo electrónico.'
-  } else if (!EMAIL_REGEX.test(cleanEmail)) {
-    errors.email = 'Ingresa un correo válido, por ejemplo nombre@dominio.com.'
-  } else if (isDisposableEmail(cleanEmail)) {
-    errors.email = 'No se permite el ingreso con correos falsos o dominios sospechosos.'
-  }
-
-  if (!password) {
-    errors.password = 'Ingresa tu contraseña.'
-  } else if (password.length < MIN_PASSWORD_LENGTH) {
-    errors.password = `La contraseña debe tener mínimo ${MIN_PASSWORD_LENGTH} caracteres.`
-  }
-
-  return errors
-}
 
 function Login({ notice, onDismissNotice, onLogin }) {
   const navigate = useNavigate()

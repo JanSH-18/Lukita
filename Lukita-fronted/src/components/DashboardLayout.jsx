@@ -6,7 +6,6 @@ import { useFinance } from '../lib/financeStore'
 import {
   PROFILES,
   PROFILE_LABELS,
-  formatMonth,
   getReferenceMonth,
   inMonth,
   summarize,
@@ -151,7 +150,7 @@ function ProfileSwitcher() {
   )
 }
 
-function Topbar({ displayName, month, onOpenMenu, onNewTransaction }) {
+function Topbar({ displayName, onOpenMenu, onNewTransaction, onLogout }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const title = routeTitle(pathname)
@@ -159,7 +158,7 @@ function Topbar({ displayName, month, onOpenMenu, onNewTransaction }) {
 
   return (
     <header className="flex items-center justify-between gap-3 px-4 pb-4 pt-5 sm:px-7 lg:px-8">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           type="button"
           aria-label="Abrir menú"
@@ -174,7 +173,7 @@ function Topbar({ displayName, month, onOpenMenu, onNewTransaction }) {
           </p>
           <p className="truncate text-xs text-slate-500">
             {isHome
-              ? `Resumen de tus finanzas · ${formatMonth(month)}`
+              ? 'Resumen de tus finanzas'
               : 'Organiza tus finanzas personales y empresariales'}
           </p>
         </div>
@@ -200,6 +199,17 @@ function Topbar({ displayName, month, onOpenMenu, onNewTransaction }) {
           className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-[#203c91]"
         >
           {getInitials(displayName) || 'LU'}
+        </button>
+        {/* Visible en todas las pantallas y tamaños, sin abrir el menu. */}
+        <button
+          type="button"
+          onClick={onLogout}
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          className="flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          <LogOut className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden md:inline">Cerrar sesión</span>
         </button>
       </div>
     </header>
@@ -310,9 +320,9 @@ function DashboardLayout({ session, onLogout, children }) {
       <div className="min-w-0 flex-1">
         <Topbar
           displayName={displayName}
-          month={month}
           onOpenMenu={() => setMenuOpen(true)}
           onNewTransaction={startTransaction}
+          onLogout={onLogout}
         />
         <div className="px-4 pb-28 sm:px-7 lg:px-8 lg:pb-8">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs text-blue-800">

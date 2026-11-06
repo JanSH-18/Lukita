@@ -1,6 +1,6 @@
 // Contexto financiero: guarda en el navegador los datos demo de cada usuario.
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { createInitialState } from './financeSeed'
+import { createDemoState, createEmptyState } from './financeSeed'
 import { formatCurrency } from './financeUtils'
 
 const STORAGE_PREFIX = 'lukita_finance_demo_v1'
@@ -10,16 +10,16 @@ const FinanceContext = createContext(null)
 const storageKeyFor = (userKey) =>
   `${STORAGE_PREFIX}:${String(userKey).trim().toLowerCase()}`
 
-// Recupera lo guardado o vuelve a los datos de ejemplo si no es valido.
+// Recupera lo guardado. Una cuenta nueva (o con datos invalidos) empieza vacia.
 function readState(storageKey) {
   try {
     const stored = localStorage.getItem(storageKey)
-    if (!stored) return createInitialState()
+    if (!stored) return createEmptyState()
     const parsed = JSON.parse(stored)
     const hasProfiles = parsed?.profiles?.personal && parsed?.profiles?.empresarial
-    return hasProfiles ? parsed : createInitialState()
+    return hasProfiles ? parsed : createEmptyState()
   } catch {
-    return createInitialState()
+    return createEmptyState()
   }
 }
 
@@ -80,7 +80,11 @@ export function FinanceProvider({ userKey, children }) {
           ...current,
           preferences: { ...current.preferences, ...preferences },
         })),
-      resetData: () => setState(createInitialState()),
+      // Reemplaza los datos por los de ejemplo, o los deja en cero (se conserva el perfil activo).
+      loadDemoData: () =>
+        setState((current) => ({ ...createDemoState(), activeProfile: current.activeProfile })),
+      clearData: () =>
+        setState((current) => ({ ...createEmptyState(), activeProfile: current.activeProfile })),
     }
   }, [state])
 

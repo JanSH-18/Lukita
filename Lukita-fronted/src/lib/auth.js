@@ -2,6 +2,7 @@
 // Cuando exista el backend en Node.js, este archivo sera el unico que cambie:
 // registerUser/authenticate pasaran a llamar a la API y el token lo firmara el servidor.
 import { compare, hash } from 'bcryptjs'
+import { isValidRuc } from './ruc'
 
 // ---------------------------------------------------------------------------
 // Constantes y validaciones
@@ -14,7 +15,7 @@ const SALT_ROUNDS = 12
 const DUMMY_HASH =
   '$2b$12$uR4PK791KBvSbJRHGXgbh.iIT9jssJxN4xntvyzt4c2yvI86z4j/a'
 
-export const MIN_PASSWORD_LENGTH = 12
+export const MIN_PASSWORD_LENGTH = 8
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -56,13 +57,17 @@ export function isEmailRegistered(email) {
   return Boolean(findUser(email))
 }
 
-export async function registerUser({ name, email, password, usageType }) {
+export async function registerUser({ name, email, password, usageType, ruc = '' }) {
   if (isEmailRegistered(email)) throw new Error('EMAIL_TAKEN')
+  // El RUC solo se pide (y se guarda) para el perfil empresarial.
+  const isBusiness = usageType === 'empresarial'
+  if (isBusiness && !isValidRuc(ruc)) throw new Error('INVALID_RUC')
 
   const user = {
     name: String(name).trim(),
     email: normalizeEmail(email),
     usageType,
+    ruc: isBusiness ? ruc : '',
     passwordHash: await hash(password, SALT_ROUNDS),
     createdAt: new Date().toISOString(),
   }
@@ -72,6 +77,21 @@ export async function registerUser({ name, email, password, usageType }) {
     JSON.stringify([...getRegisteredUsers(), user]),
   )
   return user
+}
+
+// RUC guardado del usuario ('' si no tiene).
+export function getUserRuc(email) {
+  return findUser(email)?.ruc ?? ''
+}
+
+// Guarda o borra ('') el RUC de un usuario ya registrado.
+export function updateUserRuc(email, ruc) {
+  if (ruc && !isValidRuc(ruc)) throw new Error('INVALID_RUC')
+  const normalized = normalizeEmail(email)
+  const users = getRegisteredUsers().map((user) =>
+    normalizeEmail(user?.email) === normalized ? { ...user, ruc } : user,
+  )
+  localStorage.setItem(USERS_KEY, JSON.stringify(users))
 }
 
 // Devuelve el usuario si las credenciales son correctas; si no, null.

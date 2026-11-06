@@ -1,4 +1,4 @@
-// Datos de ejemplo con los que arranca cada perfil la primera vez.
+// Datos de ejemplo (se cargan desde Configuracion) y estado vacio de las cuentas nuevas.
 
 const categories = [
   { id: 'cat-food', name: 'Alimentación', type: 'expense', color: 'amber', system: true },
@@ -81,7 +81,10 @@ const preferences = {
 
 const copyAll = (items) => items.map((item) => ({ ...item }))
 
-function createProfileData() {
+const emptyAccount = { id: 'acc-cash', name: 'Efectivo', type: 'Efectivo', balance: 0 }
+
+// Perfil con todos los datos de ejemplo.
+function createDemoProfileData() {
   return {
     categories: copyAll(categories),
     transactions: copyAll([...currentMonthTransactions, ...earlierTransactions]),
@@ -94,28 +97,49 @@ function createProfileData() {
   }
 }
 
-// Cada perfil recibe copias independientes para no mezclar sus cambios.
-export function createInitialState() {
-  const personal = createProfileData()
-  const business = createProfileData()
+// Perfil de una cuenta nueva: sin movimientos, solo categorias y una cuenta "Efectivo".
+function createEmptyProfileData() {
+  return {
+    categories: copyAll(categories),
+    transactions: [],
+    budgets: [],
+    goals: [],
+    accounts: [{ ...emptyAccount }],
+    recurring: [],
+    monthlyIncome: 0,
+    preferences: { ...preferences },
+  }
+}
 
-  // En el perfil empresarial "Vivienda" pasa a ser el alquiler del local y se
-  // agrega la categoria "Operaciones".
-  business.categories = business.categories.map((category) =>
-    category.id === 'cat-home'
-      ? { ...category, name: 'Alquiler del local' }
-      : category,
+// En el perfil empresarial "Vivienda" pasa a ser el alquiler del local y se
+// agrega la categoria "Operaciones".
+function toBusinessProfile(data) {
+  const renamed = data.categories.map((category) =>
+    category.id === 'cat-home' ? { ...category, name: 'Alquiler del local' } : category,
   )
-  business.categories.push({
+  const operations = {
     id: 'cat-business',
     name: 'Operaciones',
     type: 'expense',
     color: 'indigo',
     system: true,
-  })
+  }
+  return { ...data, categories: [...renamed, operations] }
+}
 
+// Cada perfil recibe copias independientes para no mezclar sus cambios.
+function buildState(createProfile) {
   return {
     activeProfile: 'personal',
-    profiles: { personal, empresarial: business },
+    profiles: {
+      personal: createProfile(),
+      empresarial: toBusinessProfile(createProfile()),
+    },
   }
 }
+
+// Datos de ejemplo (se cargan desde Configuracion).
+export const createDemoState = () => buildState(createDemoProfileData)
+
+// Estado inicial de una cuenta nueva: todo en cero.
+export const createEmptyState = () => buildState(createEmptyProfileData)
