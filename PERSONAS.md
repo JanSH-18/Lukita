@@ -1,6 +1,7 @@
 # PERSONAS.md
 
 **Equipo:** David Sangama, Jander Saavedra
+
 **Proyecto:** Lukita – Gestor de Finanzas Personales y Empresariales
 
 > Las Personas son ficticias, pero representan a los dos tipos de usuario que maneja Lukita: el **perfil personal** y el **perfil empresarial** (HU-8). Cada una se basa en lo que dicen usuarios reales en las mini entrevistas (ver campo "Tipo de usuario").
