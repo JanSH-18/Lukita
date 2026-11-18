@@ -1,0 +1,181 @@
+// Escrito a mano a partir de ../Lukita-BD.sql, que es la fuente de verdad real.
+// En cuanto exista una base de datos viva con ese SQL aplicado, corran
+// `npx prisma db pull` para que Prisma regenere este archivo desde la BD
+// y corrija cualquier detalle que aqui se haya escrito a mano.
+//
+// Dos cosas que el SQL expresa y Prisma no puede modelar en este archivo:
+// - Los `check (...)` de cada tabla (ej. tipo in ('ingreso','gasto')).
+//   Se repiten como comentario junto al campo y se validan tambien en la
+//   capa de Express con zod (ver src/routes).
+// - El indice unico sobre lower(email) en usuarios es un indice por
+//   expresion; aqui se declara @unique sobre email tal cual, y el login
+//   compara en minusculas en la aplicacion.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["lukita"]
+}
+
+model Usuario {
+  id       BigInt   @id @default(autoincrement())
+  nombre   String   @db.VarChar(120)
+  email    String   @unique @db.VarChar(120)
+  password String
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  perfiles Perfil[]
+
+  @@map("usuarios")
+  @@schema("lukita")
+}
+
+model Perfil {
+  id        BigInt   @id @default(autoincrement())
+  usuarioId BigInt   @map("usuario_id")
+  // check (tipo in ('personal','empresarial'))
+  tipo      String   @db.VarChar(12)
+  nombre    String?  @db.VarChar(120)
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  usuario       Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  cuentas       Cuenta[]
+  categorias    Categoria[]
+  recurrentes   PagoRecurrente[]
+  transacciones Transaccion[]
+  presupuestos  Presupuesto[]
+  metasAhorro   MetaAhorro[]
+
+  @@unique([usuarioId, tipo])
+  @@map("perfiles")
+  @@schema("lukita")
+}
+
+model Cuenta {
+  id           BigInt   @id @default(autoincrement())
+  perfilId     BigInt   @map("perfil_id")
+  nombre       String   @db.VarChar(80)
+  // check (tipo in ('efectivo','banco','tarjeta'))
+  tipo         String   @db.VarChar(10)
+  saldoInicial Decimal  @default(0) @map("saldo_inicial") @db.Decimal(12, 2)
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  perfil        Perfil           @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  recurrentes   PagoRecurrente[]
+  transacciones Transaccion[]
+
+  @@index([perfilId])
+  @@map("cuentas")
+  @@schema("lukita")
+}
+
+model Categoria {
+  id       BigInt  @id @default(autoincrement())
+  perfilId BigInt  @map("perfil_id")
+  nombre   String  @db.VarChar(60)
+  // check (tipo in ('ingreso','gasto'))
+  tipo     String  @db.VarChar(8)
+  color    String? @db.Char(7)
+
+  perfil        Perfil           @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  recurrentes   PagoRecurrente[]
+  transacciones Transaccion[]
+  presupuestos  Presupuesto[]
+
+  @@unique([perfilId, tipo, nombre])
+  @@map("categorias")
+  @@schema("lukita")
+}
+
+model PagoRecurrente {
+  id            BigInt   @id @default(autoincrement())
+  perfilId      BigInt   @map("perfil_id")
+  cuentaId      BigInt   @map("cuenta_id")
+  categoriaId   BigInt   @map("categorias_id")
+  // check (tipo in ('ingreso','gasto'))
+  tipo          String   @db.VarChar(8)
+  descripcion   String?  @db.VarChar(200)
+  // check (monto > 0)
+  monto         Decimal  @db.Decimal(12, 2)
+  // check (frecuencia in ('semanal','quincenal','mensual','anual'))
+  frecuencia    String   @db.VarChar(10)
+  proximaFecha  DateTime @map("proxima_fecha") @db.Date
+  activo        Boolean  @default(true)
+
+  perfil        Perfil        @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  cuenta        Cuenta        @relation(fields: [cuentaId], references: [id], onDelete: NoAction)
+  categoria     Categoria     @relation(fields: [categoriaId], references: [id], onDelete: NoAction)
+  transacciones Transaccion[]
+
+  // El SQL solo indexa (perfil_id, proxima_fecha) where activo (indice
+  // parcial); Prisma no puede expresar el "where", asi que queda completo.
+  @@index([perfilId, proximaFecha])
+  @@map("pagos_recurrentes")
+  @@schema("lukita")
+}
+
+model Transaccion {
+  id           BigInt   @id @default(autoincrement())
+  perfilId     BigInt   @map("perfil_id")
+  cuentaId     BigInt   @map("cuenta_id")
+  categoriaId  BigInt   @map("categoria_id")
+  recurrenteId BigInt?  @map("recurrente_id")
+  // check (tipo in ('ingreso','gasto'))
+  tipo         String   @db.VarChar(8)
+  // check (monto > 0)
+  monto        Decimal  @db.Decimal(12, 2)
+  fecha        DateTime @db.Date
+  descripcion  String?  @db.VarChar(200)
+  esExtra      Boolean  @default(false) @map("es_extra")
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  perfil     Perfil          @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  cuenta     Cuenta          @relation(fields: [cuentaId], references: [id], onDelete: NoAction)
+  categoria  Categoria       @relation(fields: [categoriaId], references: [id], onDelete: NoAction)
+  recurrente PagoRecurrente? @relation(fields: [recurrenteId], references: [id], onDelete: SetNull)
+
+  @@index([perfilId, fecha])
+  @@index([categoriaId])
+  @@index([cuentaId])
+  @@map("transacciones")
+  @@schema("lukita")
+}
+
+model Presupuesto {
+  id          BigInt   @id @default(autoincrement())
+  perfilId    BigInt   @map("perfil_id")
+  categoriaId BigInt   @map("categoria_id")
+  // check (extract(day from mes) = 1): siempre el dia 1 del mes
+  mes         DateTime @db.Date
+  // check (monto_limite > 0)
+  montoLimite Decimal  @map("monto_limite") @db.Decimal(12, 2)
+
+  perfil    Perfil    @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  categoria Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([perfilId, categoriaId, mes])
+  @@map("presupuestos")
+  @@schema("lukita")
+}
+
+model MetaAhorro {
+  id             BigInt   @id @default(autoincrement())
+  perfilId       BigInt   @map("perfil_id")
+  nombre         String   @db.VarChar(100)
+  // check (monto_objetivo > 0)
+  montoObjetivo  Decimal  @map("monto_objetivo") @db.Decimal(12, 2)
+  // check (monto_actual >= 0)
+  montoActual    Decimal  @default(0) @map("monto_actual") @db.Decimal(12, 2)
+  fechaLimite    DateTime @map("fecha_limite") @db.Date
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@index([perfilId])
+  @@map("metas_ahorro")
+  @@schema("lukita")
+}
