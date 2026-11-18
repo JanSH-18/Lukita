@@ -40,6 +40,8 @@ model Perfil {
   // check (tipo in ('personal','empresarial'))
   tipo      String   @db.VarChar(12)
   nombre    String?  @db.VarChar(120)
+  // Solo aplica cuando tipo = 'empresarial'; se valida en la app (src/lib/ruc.js).
+  ruc       String?  @db.VarChar(11)
   creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
 
   usuario       Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

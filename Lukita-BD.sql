@@ -21,6 +21,7 @@ create table Perfiles(
 	usuario_id 		bigint 			not null references usuarios(id) on delete cascade,
 	tipo 			varchar(12) 	not null check(tipo in ('personal', 'empresarial')),
 	nombre			varchar(120),
+	ruc				varchar(11), 			--solo para perfiles empresariales; validado en la app
 	creado_en 		timestamptz 	not null default now(),
 	unique (usuario_id, tipo)
 );

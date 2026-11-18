@@ -35,6 +35,16 @@
 - El índice único real de `usuarios.email` es sobre `lower(email)`; por
   eso `auth.routes.js` normaliza el correo a minúsculas antes de
   guardar o comparar. No agregues otra forma de comparar emails.
+- `POST /api/auth/registro` usa los mismos nombres de campo que
+  `registerUser` en `Lukita-fronted/src/lib/auth.js` (`name`, `usageType`,
+  `ruc`), a propósito, para que cambiar esa función por un `fetch` a esta
+  API sea casi un copy-paste. El resto de la API sí usa nombres en
+  español (`tipo`, `perfilId`, etc.) como el resto del dominio.
+- `ruc` vive en `perfiles` (no en `usuarios`): es un dato del perfil
+  empresarial, igual que en el frontend. Se agregó esa columna a
+  `../Lukita-BD.sql` — si alguien ya tiene una base creada con la
+  versión vieja del SQL, necesita un `alter table perfiles add column
+  ruc varchar(11);` antes de levantar esta API.
 - `recibos.routes.js` no tiene todavía la llamada real a Azure AI
   Foundry (`analizarConFoundry` lanza un 501 a propósito). No la
   reemplacen por una llamada a Jev: ese endpoint solo acepta texto, no
