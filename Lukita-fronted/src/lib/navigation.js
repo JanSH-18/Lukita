@@ -2,6 +2,7 @@
 import {
   ArrowLeftRight,
   BarChart3,
+  Camera,
   ChartPie,
   CircleDollarSign,
   CreditCard,
@@ -24,6 +25,7 @@ export const NAV_ITEMS = [
   // ya tienen su propio acceso en MOBILE_TABS, asi que quedan afuera.
   { label: 'Asistente de voz', to: '/app/voz', icon: Mic },
   { label: 'Pregúntale a Lukita', to: '/app/chat', icon: MessageCircle },
+  { label: 'Escanear boleta', to: '/app/recibos', icon: Camera },
   { label: 'Gastos extras', to: '/app/gastos-extras', icon: CircleDollarSign },
   { label: 'Categorías', to: '/app/categorias', icon: Tags },
   { label: 'Presupuestos', to: '/app/presupuestos', icon: ChartPie },

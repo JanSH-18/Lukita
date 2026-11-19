@@ -11,6 +11,7 @@ import {
   GoalsPage,
   MoneyPage,
   MorePage,
+  RecibosPage,
   RecurringPage,
   ReportsPage,
   SettingsPage,
@@ -30,6 +31,7 @@ function DashboardRoutes({ session, onLogout }) {
           <Route index element={<DashboardHome />} />
           <Route path="voz" element={<VoicePage {...account} />} />
           <Route path="chat" element={<ChatPage {...account} />} />
+          <Route path="recibos" element={<RecibosPage {...account} />} />
           <Route path="mi-dinero" element={<MoneyPage />} />
           <Route path="transacciones" element={<TransactionsPage />} />
           <Route path="gastos-extras" element={<ExtraExpensesPage />} />
