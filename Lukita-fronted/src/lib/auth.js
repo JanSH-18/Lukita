@@ -1,7 +1,7 @@
-// Autenticacion de demostracion: usuarios y sesion se guardan en el navegador.
-// Cuando exista el backend en Node.js, este archivo sera el unico que cambie:
-// registerUser/authenticate pasaran a llamar a la API y el token lo firmara el servidor.
-import { compare, hash } from 'bcryptjs'
+// Autenticacion real: registerUser/authenticate llaman al backend
+// (Node/Express/Prisma en Lukita-backend) y el token lo firma el servidor.
+// getUserRuc/updateUserRuc siguen siendo locales (ver nota mas abajo).
+import { apiFetch, ApiError } from './api'
 import { isValidRuc } from './ruc'
 
 // ---------------------------------------------------------------------------
@@ -9,11 +9,6 @@ import { isValidRuc } from './ruc'
 // ---------------------------------------------------------------------------
 const USERS_KEY = 'lukita_users'
 const TOKEN_KEY = 'lukita_token'
-const SALT_ROUNDS = 12
-// Hash de relleno: se compara aunque el correo no exista, para que el tiempo de
-// respuesta no revele si una cuenta esta registrada.
-const DUMMY_HASH =
-  '$2b$12$uR4PK791KBvSbJRHGXgbh.iIT9jssJxN4xntvyzt4c2yvI86z4j/a'
 
 export const MIN_PASSWORD_LENGTH = 8
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -33,7 +28,13 @@ export function isDisposableEmail(email) {
 }
 
 // ---------------------------------------------------------------------------
-// Usuarios registrados (localStorage)
+// Lista local de usuarios: ya no la llena registerUser (el backend es la
+// fuente real). Solo queda para getUserRuc/updateUserRuc (edicion de RUC en
+// Configuracion), que todavia no tiene un endpoint propio en el backend;
+// por lo tanto nunca va a encontrar al usuario real y se queda inerte.
+// isEmailRegistered por la misma razon ya no se usa para la validacion en
+// vivo del registro (ver authValidation.js): el backend devuelve 409 si el
+// correo ya existe.
 // ---------------------------------------------------------------------------
 function getRegisteredUsers() {
   try {
@@ -58,25 +59,25 @@ export function isEmailRegistered(email) {
 }
 
 export async function registerUser({ name, email, password, usageType, ruc = '' }) {
-  if (isEmailRegistered(email)) throw new Error('EMAIL_TAKEN')
   // El RUC solo se pide (y se guarda) para el perfil empresarial.
   const isBusiness = usageType === 'empresarial'
   if (isBusiness && !isValidRuc(ruc)) throw new Error('INVALID_RUC')
 
-  const user = {
-    name: String(name).trim(),
-    email: normalizeEmail(email),
-    usageType,
-    ruc: isBusiness ? ruc : '',
-    passwordHash: await hash(password, SALT_ROUNDS),
-    createdAt: new Date().toISOString(),
+  try {
+    return await apiFetch('/api/auth/registro', {
+      method: 'POST',
+      body: {
+        name: String(name).trim(),
+        email: normalizeEmail(email),
+        password,
+        usageType,
+        ruc: isBusiness ? ruc : undefined,
+      },
+    })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) throw new Error('EMAIL_TAKEN', { cause: error })
+    throw error
   }
-
-  localStorage.setItem(
-    USERS_KEY,
-    JSON.stringify([...getRegisteredUsers(), user]),
-  )
-  return user
 }
 
 // RUC guardado del usuario ('' si no tiene).
@@ -94,47 +95,25 @@ export function updateUserRuc(email, ruc) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users))
 }
 
-// Devuelve el usuario si las credenciales son correctas; si no, null.
+// Devuelve { token, id, name, email } si las credenciales son correctas; si no, null.
 export async function authenticate(email, password) {
-  const user = findUser(email)
-  const matches = await compare(
-    String(password),
-    user?.passwordHash ?? DUMMY_HASH,
-  )
-  return user && matches ? user : null
-}
-
-// ---------------------------------------------------------------------------
-// Sesion: token con formato JWT (header.payload.firma)
-// OJO: la firma es solo una simulacion; la seguridad real vendra del servidor.
-// ---------------------------------------------------------------------------
-function encodeBase64Url(value) {
-  const bytes = new TextEncoder().encode(value)
-  let binary = ''
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte)
-  })
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function decodeBase64Url(value) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
-  const padded = normalized + '==='.slice((normalized.length + 3) % 4)
-  const binary = atob(padded)
-  return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)))
-}
-
-// Hash FNV-1a de 32 bits (no es criptografico).
-function sign(value) {
-  let digest = 0x811c9dc5
-  for (let index = 0; index < value.length; index += 1) {
-    digest ^= value.charCodeAt(index)
-    digest = Math.imul(digest, 0x01000193)
+  try {
+    const { token, usuario } = await apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: { email: normalizeEmail(email), password },
+    })
+    return { token, id: usuario.id, name: usuario.name, email: usuario.email }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null
+    throw error
   }
-  return (digest >>> 0).toString(16).padStart(8, '0')
 }
 
-const readToken = () =>
+// ---------------------------------------------------------------------------
+// Sesion: el token real lo firma el backend; aqui solo se guarda junto con
+// los datos publicos del usuario que devuelve login/registro.
+// ---------------------------------------------------------------------------
+const readRaw = () =>
   sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
 
 export function clearSession() {
@@ -142,48 +121,36 @@ export function clearSession() {
   sessionStorage.removeItem(TOKEN_KEY)
 }
 
-// Devuelve los datos del token (sub, email, name, exp...) o null si no es valido.
+// Devuelve { token, id, name, email } o null si no hay sesion valida.
 export function getSession() {
-  const token = readToken()
-  if (!token) return null
-
-  const parts = token.split('.')
-  if (parts.length !== 3 || sign(`${parts[0]}.${parts[1]}`) !== parts[2]) {
-    clearSession()
-    return null
-  }
+  const raw = readRaw()
+  if (!raw) return null
 
   try {
-    const payload = JSON.parse(decodeBase64Url(parts[1]))
-    if (!payload?.exp || payload.exp * 1000 <= Date.now()) {
+    const { token, usuario } = JSON.parse(raw)
+    if (!token || !usuario) {
       clearSession()
       return null
     }
-    return payload
+    return { token, id: usuario.id, name: usuario.name, email: usuario.email }
   } catch {
     clearSession()
     return null
   }
 }
 
-// "Recordarme" guarda el token 7 dias en localStorage; si no, 1 hora en sessionStorage.
+// "Recordarme" guarda la sesion en localStorage; si no, solo en sessionStorage
+// (se pierde al cerrar la pestaña). El token en si ya trae su propia
+// expiracion (la fija JWT_EXPIRES_IN en el backend).
 export function createSession(user, remember) {
-  const issuedAt = Math.floor(Date.now() / 1000)
-  const lifetime = remember ? 60 * 60 * 24 * 7 : 60 * 60
-  const header = encodeBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const payload = encodeBase64Url(
-    JSON.stringify({
-      sub: user.email,
-      email: user.email,
-      name: user.name ?? '',
-      iat: issuedAt,
-      exp: issuedAt + lifetime,
-    }),
-  )
-  const token = `${header}.${payload}.${sign(`${header}.${payload}`)}`
-
   clearSession()
   const storage = remember ? localStorage : sessionStorage
-  storage.setItem(TOKEN_KEY, token)
-  return token
+  storage.setItem(
+    TOKEN_KEY,
+    JSON.stringify({
+      token: user.token,
+      usuario: { id: user.id, name: user.name, email: user.email },
+    }),
+  )
+  return user.token
 }

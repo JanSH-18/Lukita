@@ -6,6 +6,7 @@ import {
   AccountsPage,
   BudgetsPage,
   CategoriesPage,
+  ChatPage,
   ExtraExpensesPage,
   GoalsPage,
   MoneyPage,
@@ -14,6 +15,7 @@ import {
   ReportsPage,
   SettingsPage,
   TransactionsPage,
+  VoicePage,
 } from './finance'
 import DashboardHome from './dashboardHome'
 
@@ -26,6 +28,8 @@ function DashboardRoutes({ session, onLogout }) {
       <DashboardLayout session={session} onLogout={onLogout}>
         <Routes>
           <Route index element={<DashboardHome />} />
+          <Route path="voz" element={<VoicePage {...account} />} />
+          <Route path="chat" element={<ChatPage {...account} />} />
           <Route path="mi-dinero" element={<MoneyPage />} />
           <Route path="transacciones" element={<TransactionsPage />} />
           <Route path="gastos-extras" element={<ExtraExpensesPage />} />

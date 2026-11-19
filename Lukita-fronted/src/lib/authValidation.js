@@ -1,11 +1,6 @@
 // Validaciones de los formularios de login y registro (reglas de la HU-1 y la HU-2).
 // Devuelven un objeto { campo: 'mensaje' }; vacio si todo esta bien.
-import {
-  EMAIL_REGEX,
-  isDisposableEmail,
-  isEmailRegistered,
-  MIN_PASSWORD_LENGTH,
-} from './auth'
+import { EMAIL_REGEX, isDisposableEmail, MIN_PASSWORD_LENGTH } from './auth'
 import { getRucError } from './ruc'
 
 export function validateLogin({ email, password }) {
@@ -39,9 +34,9 @@ export function validateRegistro(form, usageType, acceptedTerms) {
     errors.email = 'Ingresa un correo electrónico válido.'
   } else if (isDisposableEmail(email)) {
     errors.email = 'No se permite registrar correos falsos o dominios sospechosos.'
-  } else if (isEmailRegistered(email)) {
-    errors.email = 'Este correo ya está registrado.'
   }
+  // La disponibilidad del correo la valida el backend (409 si ya existe);
+  // registro.jsx traduce ese error al campo "email" tras enviar el formulario.
 
   // El RUC solo es obligatorio para el perfil empresarial.
   if (usageType === 'empresarial') {

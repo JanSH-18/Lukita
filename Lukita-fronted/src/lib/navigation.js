@@ -6,6 +6,8 @@ import {
   CircleDollarSign,
   CreditCard,
   Home,
+  MessageCircle,
+  Mic,
   Repeat2,
   Settings,
   Tags,
@@ -17,6 +19,11 @@ export const NAV_ITEMS = [
   { label: 'Dashboard', to: '/app', icon: Home },
   { label: 'Mi dinero', to: '/app/mi-dinero', icon: Wallet },
   { label: 'Transacciones', to: '/app/transacciones', icon: ArrowLeftRight },
+  // A partir de aqui, NAV_ITEMS.slice(3) alimenta el menu "Mas" en movil
+  // (ver MoreMenu en DashboardLayout.jsx); Dashboard/Mi dinero/Transacciones
+  // ya tienen su propio acceso en MOBILE_TABS, asi que quedan afuera.
+  { label: 'Asistente de voz', to: '/app/voz', icon: Mic },
+  { label: 'Pregúntale a Lukita', to: '/app/chat', icon: MessageCircle },
   { label: 'Gastos extras', to: '/app/gastos-extras', icon: CircleDollarSign },
   { label: 'Categorías', to: '/app/categorias', icon: Tags },
   { label: 'Presupuestos', to: '/app/presupuestos', icon: ChartPie },
