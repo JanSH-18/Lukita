@@ -27,7 +27,7 @@ app.use('/api/perfiles', requireAuth, perfilesRouter)
 app.use('/api/perfiles/:perfilId/cuentas', requireAuth, cuentasRouter)
 app.use('/api/perfiles/:perfilId/categorias', requireAuth, categoriasRouter)
 app.use('/api/perfiles/:perfilId/transacciones', requireAuth, transaccionesRouter)
-app.use('/api/recibos', requireAuth, recibosRouter)
+app.use('/api/perfiles/:perfilId/recibos', requireAuth, recibosRouter)
 
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }))
 app.use(errorHandler)

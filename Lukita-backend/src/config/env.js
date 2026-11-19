@@ -11,13 +11,10 @@ export const env = {
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
-  azureFoundry: {
-    endpoint: process.env.AZURE_FOUNDRY_ENDPOINT ?? '',
-    apiKey: process.env.AZURE_FOUNDRY_API_KEY ?? '',
-    deployment: process.env.AZURE_FOUNDRY_DEPLOYMENT ?? '',
+  visionAula: {
+    url: process.env.VISION_AULA_URL || 'https://boletas-aula.analizodatos.com/v1/boleta',
+    token: process.env.VISION_AULA_TOKEN ?? '',
   },
 }
 
-export const foundryConfigured = Boolean(
-  env.azureFoundry.endpoint && env.azureFoundry.apiKey && env.azureFoundry.deployment,
-)
+export const visionAulaConfigured = Boolean(env.visionAula.token)
