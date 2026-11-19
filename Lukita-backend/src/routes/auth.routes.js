@@ -65,10 +65,25 @@ authRouter.post(
         email: emailNormalizado,
         password: passwordHash,
         perfiles: {
+          // Sin esto el perfil nace sin cuentas ni categorias, y ni
+          // /recibos/analizar ni /voz tendrian con que trabajar.
           create: {
             tipo: usageType,
             nombre: esEmpresarial ? null : 'Personal',
             ruc: esEmpresarial ? ruc : null,
+            cuentas: {
+              create: [{ nombre: 'Efectivo', tipo: 'efectivo', saldoInicial: 0 }],
+            },
+            categorias: {
+              create: [
+                { nombre: 'Alimentación', tipo: 'gasto' },
+                { nombre: 'Transporte', tipo: 'gasto' },
+                { nombre: 'Ocio', tipo: 'gasto' },
+                { nombre: 'Vivienda', tipo: 'gasto' },
+                { nombre: 'Salud', tipo: 'gasto' },
+                { nombre: 'Sueldo', tipo: 'ingreso' },
+              ],
+            },
           },
         },
       },

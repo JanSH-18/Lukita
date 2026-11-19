@@ -4,8 +4,8 @@ import sharp from 'sharp'
 import { env, visionAulaConfigured } from '../config/env.js'
 import { HttpError } from '../utils/httpError.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
-import { prisma } from '../lib/prisma.js'
 import { getOwnedPerfil } from '../lib/ownership.js'
+import { categoriasDeGasto } from '../lib/categorias.js'
 
 export const recibosRouter = Router({ mergeParams: true })
 
@@ -29,14 +29,6 @@ async function reducirParaVisionAula(buffer) {
     calidad -= 20
   }
   throw new HttpError(413, 'La foto es demasiado pesada incluso reducida; intenta con otra foto')
-}
-
-async function categoriasDeGasto(perfilId) {
-  const categorias = await prisma.categoria.findMany({
-    where: { perfilId, tipo: 'gasto' },
-    take: 40, // limite de vision-aula
-  })
-  return categorias.map((c) => ({ id: String(c.id), nombre: c.nombre }))
 }
 
 function resultadoDePrueba() {

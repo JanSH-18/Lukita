@@ -6,6 +6,8 @@ import { cuentasRouter } from './routes/cuentas.routes.js'
 import { categoriasRouter } from './routes/categorias.routes.js'
 import { transaccionesRouter } from './routes/transacciones.routes.js'
 import { recibosRouter } from './routes/recibos.routes.js'
+import { vozRouter } from './routes/voz.routes.js'
+import { chatRouter } from './routes/chat.routes.js'
 import { requireAuth } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
@@ -28,6 +30,8 @@ app.use('/api/perfiles/:perfilId/cuentas', requireAuth, cuentasRouter)
 app.use('/api/perfiles/:perfilId/categorias', requireAuth, categoriasRouter)
 app.use('/api/perfiles/:perfilId/transacciones', requireAuth, transaccionesRouter)
 app.use('/api/perfiles/:perfilId/recibos', requireAuth, recibosRouter)
+app.use('/api/perfiles/:perfilId/voz', requireAuth, vozRouter)
+app.use('/api/perfiles/:perfilId/chat', requireAuth, chatRouter)
 
 app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }))
 app.use(errorHandler)
