@@ -33,13 +33,13 @@ function DashboardRoutes({ session, onLogout }) {
           <Route path="chat" element={<ChatPage {...account} />} />
           <Route path="recibos" element={<RecibosPage {...account} />} />
           <Route path="mi-dinero" element={<MoneyPage />} />
-          <Route path="transacciones" element={<TransactionsPage />} />
+          <Route path="transacciones" element={<TransactionsPage {...account} />} />
           <Route path="gastos-extras" element={<ExtraExpensesPage />} />
           <Route path="categorias" element={<CategoriesPage />} />
           <Route path="presupuestos" element={<BudgetsPage />} />
           <Route path="metas-de-ahorro" element={<GoalsPage />} />
           <Route path="recurrentes" element={<RecurringPage />} />
-          <Route path="cuentas" element={<AccountsPage />} />
+          <Route path="cuentas" element={<AccountsPage {...account} />} />
           <Route path="reportes" element={<ReportsPage />} />
           <Route path="configuracion" element={<SettingsPage {...account} />} />
           <Route path="mas" element={<MorePage {...account} />} />
