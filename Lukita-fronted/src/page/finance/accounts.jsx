@@ -1,5 +1,5 @@
-// Cuentas, perfiles financieros e ingresos/egresos del mes.
-import { useState } from 'react'
+// Cuentas (backend real) e ingresos/egresos del mes (demo).
+import { useEffect, useState } from 'react'
 import { Bell, Pencil, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -12,46 +12,50 @@ import {
   SelectField,
 } from '../../components/FinanceUI'
 import { useFinance } from '../../lib/financeStore'
+import { apiFetch } from '../../lib/api'
 import {
-  PROFILES,
-  PROFILE_LABELS,
   confirmDelete,
   firstDayOfNextMonth,
   formatMonth,
-  getAccountBalance,
   getReferenceMonth,
   inMonth,
-  summarize,
   sumAmounts,
   todayISO,
 } from '../../lib/financeUtils'
 import { SummaryRow, Tag } from './shared'
 
+function money(value) {
+  return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(Number(value))
+}
+
 // ---------------------------------------------------------------------------
-// Cuentas y perfiles
+// Cuentas -- conectada al backend real (/api/perfiles/:id/cuentas), igual
+// que Transacciones, Escanear boleta, Voz y Chat.
 // ---------------------------------------------------------------------------
-const ACCOUNT_TYPES = ['Efectivo', 'Banco', 'Tarjeta']
-const EMPTY_ACCOUNT_FORM = { name: '', type: 'Banco', balance: '' }
+const ACCOUNT_TYPES = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'banco', label: 'Banco' },
+  { value: 'tarjeta', label: 'Tarjeta' },
+]
+const EMPTY_ACCOUNT_FORM = { nombre: '', tipo: 'banco', saldoInicial: '' }
 
 function AccountCard({ account, balance, onEdit, onViewMovements, onDelete }) {
-  const { money } = useFinance()
-
   return (
     <Card>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-100 font-bold text-[#3154bb]">
-            {account.name[0]}
+            {account.nombre[0]}
           </span>
           <div>
-            <h2 className="font-bold">{account.name}</h2>
-            <Tag>{account.type}</Tag>
+            <h2 className="font-bold">{account.nombre}</h2>
+            <Tag>{ACCOUNT_TYPES.find((t) => t.value === account.tipo)?.label ?? account.tipo}</Tag>
           </div>
         </div>
         <Button
           variant="ghost"
           className="min-h-8 px-2"
-          aria-label={`Editar la cuenta ${account.name}`}
+          aria-label={`Editar la cuenta ${account.nombre}`}
           onClick={onEdit}
         >
           <Pencil className="h-4 w-4" />
@@ -73,7 +77,7 @@ function AccountCard({ account, balance, onEdit, onViewMovements, onDelete }) {
   )
 }
 
-function AccountModal({ mode, initial, profile, onSetProfile, onSave, onClose }) {
+function AccountModal({ mode, initial, onSave, onClose, saving }) {
   const [form, setForm] = useState(initial)
   const [error, setError] = useState('')
 
@@ -81,28 +85,23 @@ function AccountModal({ mode, initial, profile, onSetProfile, onSave, onClose })
 
   function submit(event) {
     event.preventDefault()
-    const balance = Number(form.balance)
-    if (!form.name.trim() || !Number.isFinite(balance) || balance < 0) {
+    const saldoInicial = Number(form.saldoInicial)
+    if (!form.nombre.trim() || !Number.isFinite(saldoInicial) || saldoInicial < 0) {
       setError('Ingresa un nombre y un saldo inicial válido.')
       return
     }
-    onSave({ ...form, name: form.name.trim(), balance })
+    onSave({ ...form, nombre: form.nombre.trim(), saldoInicial })
   }
 
   return (
     <Modal title={mode === 'edit' ? 'Editar cuenta' : 'Nueva cuenta'} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <SelectField
-          label="Tipo de cuenta"
-          value={form.type}
-          onChange={setField('type')}
-          options={ACCOUNT_TYPES.map((type) => ({ value: type, label: type }))}
-        />
+        <SelectField label="Tipo de cuenta" value={form.tipo} onChange={setField('tipo')} options={ACCOUNT_TYPES} />
         <Field
           label="Nombre de la cuenta *"
           placeholder="Ej. BCP Ahorros"
-          value={form.name}
-          onChange={setField('name')}
+          value={form.nombre}
+          onChange={setField('nombre')}
         />
         <Field
           label="Saldo inicial *"
@@ -110,36 +109,27 @@ function AccountModal({ mode, initial, profile, onSetProfile, onSave, onClose })
           min="0"
           step="0.01"
           placeholder="0.00"
-          value={form.balance}
-          onChange={setField('balance')}
+          value={form.saldoInicial}
+          onChange={setField('saldoInicial')}
         />
-        {/* Cambiar de perfil al editar movería la cuenta a otro perfil: solo al crear. */}
-        {mode === 'create' && (
-          <SelectField
-            label="Perfil"
-            value={profile}
-            onChange={(event) => onSetProfile(event.target.value)}
-            options={PROFILES.map((value) => ({ value, label: PROFILE_LABELS[value] }))}
-          />
-        )}
         {error && <Notice tone="error">{error}</Notice>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit">{mode === 'edit' ? 'Guardar cambios' : 'Crear cuenta'}</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear cuenta'}
+          </Button>
         </div>
       </form>
     </Modal>
   )
 }
 
-function AccountsSummary({ rows, month }) {
-  const { money } = useFinance()
-
+function AccountsSummary({ rows }) {
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-bold">Resumen por cuenta · {formatMonth(month)}</h2>
+      <h2 className="mb-3 text-lg font-bold">Resumen por cuenta</h2>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="text-left text-xs uppercase text-slate-500">
@@ -154,7 +144,7 @@ function AccountsSummary({ rows, month }) {
           <tbody className="divide-y divide-slate-100">
             {rows.map(({ account, movements, income, expenses, balance }) => (
               <tr key={account.id}>
-                <td className="py-4 font-semibold">{account.name}</td>
+                <td className="py-4 font-semibold">{account.nombre}</td>
                 <td>{movements}</td>
                 <td className="font-semibold text-emerald-600">{money(income)}</td>
                 <td className="font-semibold text-red-500">{money(expenses)}</td>
@@ -168,50 +158,111 @@ function AccountsSummary({ rows, month }) {
   )
 }
 
-export function AccountsPage() {
-  const { data, upsert, remove, profile, setProfile } = useFinance()
+export function AccountsPage({ session }) {
   const navigate = useNavigate()
+  const [cargando, setCargando] = useState(true)
+  const [perfilId, setPerfilId] = useState(null)
+  const [cuentas, setCuentas] = useState([])
+  const [transacciones, setTransacciones] = useState([])
   const [modal, setModal] = useState(null)
-  const [pageError, setPageError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState(null)
 
-  const month = getReferenceMonth(data.transactions)
-  const rows = data.accounts.map((account) => {
-    const monthMovements = inMonth(
-      data.transactions.filter((item) => item.accountId === account.id),
-      month,
-    )
+  useEffect(() => {
+    let activo = true
+    async function cargarTodo() {
+      try {
+        const perfiles = await apiFetch('/api/perfiles', { token: session.token })
+        const perfil = perfiles[0]
+        if (!perfil) throw new Error('Tu cuenta todavía no tiene un perfil configurado.')
+        if (!activo) return
+        setPerfilId(perfil.id)
+
+        const [cuentasRes, transaccionesRes] = await Promise.all([
+          apiFetch(`/api/perfiles/${perfil.id}/cuentas`, { token: session.token }),
+          apiFetch(`/api/perfiles/${perfil.id}/transacciones`, { token: session.token }),
+        ])
+        if (!activo) return
+        setCuentas(cuentasRes)
+        setTransacciones(transaccionesRes)
+      } catch (error) {
+        if (activo) setNotice({ tone: 'error', text: error.message ?? 'No se pudo conectar con el servidor.' })
+      } finally {
+        if (activo) setCargando(false)
+      }
+    }
+    cargarTodo()
+    return () => {
+      activo = false
+    }
+  }, [session.token])
+
+  const rows = cuentas.map((account) => {
+    const movimientos = transacciones.filter((item) => String(item.cuentaId) === String(account.id))
+    const income = sumAmounts(movimientos.filter((item) => item.tipo === 'ingreso').map((item) => ({ amount: Number(item.monto) })))
+    const expenses = sumAmounts(movimientos.filter((item) => item.tipo === 'gasto').map((item) => ({ amount: Number(item.monto) })))
     return {
       account,
-      movements: monthMovements.length,
-      ...summarize(monthMovements),
-      balance: getAccountBalance(account, data.transactions),
+      movements: movimientos.length,
+      income,
+      expenses,
+      balance: Number(account.saldoInicial) + income - expenses,
     }
   })
 
-  function save(values) {
-    upsert('accounts', { id: modal.item?.id ?? `acc-${crypto.randomUUID()}`, ...values })
-    setModal(null)
+  async function save(values) {
+    setSaving(true)
+    try {
+      if (modal.item) {
+        const actualizada = await apiFetch(`/api/perfiles/${perfilId}/cuentas/${modal.item.id}`, {
+          method: 'PUT',
+          token: session.token,
+          body: values,
+        })
+        setCuentas((current) => current.map((item) => (item.id === actualizada.id ? actualizada : item)))
+      } else {
+        const creada = await apiFetch(`/api/perfiles/${perfilId}/cuentas`, {
+          method: 'POST',
+          token: session.token,
+          body: values,
+        })
+        setCuentas((current) => [...current, creada])
+      }
+      setModal(null)
+    } catch (error) {
+      setNotice({ tone: 'error', text: error.message ?? 'No se pudo guardar la cuenta.' })
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function handleDelete(account) {
-    setPageError('')
-    const inUse =
-      data.transactions.some((item) => item.accountId === account.id) ||
-      data.recurring.some((item) => item.accountId === account.id)
-    if (inUse) {
-      setPageError(
-        'No puedes eliminar una cuenta que tiene movimientos o pagos recurrentes asociados.',
-      )
-    } else if (confirmDelete(account.name)) {
-      remove('accounts', account.id)
+  async function handleDelete(account) {
+    setNotice(null)
+    if (!confirmDelete(account.nombre)) return
+    try {
+      await apiFetch(`/api/perfiles/${perfilId}/cuentas/${account.id}`, {
+        method: 'DELETE',
+        token: session.token,
+      })
+      setCuentas((current) => current.filter((item) => item.id !== account.id))
+    } catch (error) {
+      setNotice({ tone: 'error', text: error.message ?? 'No se pudo eliminar la cuenta.' })
     }
+  }
+
+  if (cargando) {
+    return (
+      <div className="space-y-5">
+        <PageHeading title="Cuentas" subtitle="Cargando tu cuenta..." />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-5">
       <PageHeading
-        title="Cuentas y perfiles"
-        subtitle="Tu dinero ordenado, sin mezclar lo personal con lo empresarial"
+        title="Cuentas"
+        subtitle="Tu dinero ordenado: efectivo, bancos y tarjetas"
         action={
           <Button onClick={() => setModal({ mode: 'create', initial: EMPTY_ACCOUNT_FORM })}>
             <Plus className="h-4 w-4" />
@@ -220,20 +271,7 @@ export function AccountsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {PROFILES.map((option) => (
-          <Button
-            key={option}
-            variant={profile === option ? 'primary' : 'secondary'}
-            onClick={() => setProfile(option)}
-          >
-            {PROFILE_LABELS[option]}
-          </Button>
-        ))}
-        <span className="text-sm text-slate-500">
-          Los datos de cada perfil se mantienen separados.
-        </span>
-      </div>
+      {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
 
       <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {rows.map(({ account, balance }) => (
@@ -246,9 +284,9 @@ export function AccountsPage() {
                 mode: 'edit',
                 item: account,
                 initial: {
-                  name: account.name,
-                  type: account.type,
-                  balance: String(account.balance),
+                  nombre: account.nombre,
+                  tipo: account.tipo,
+                  saldoInicial: String(account.saldoInicial),
                 },
               })
             }
@@ -258,17 +296,15 @@ export function AccountsPage() {
         ))}
       </section>
 
-      {pageError && <Notice tone="error">{pageError}</Notice>}
-      <AccountsSummary rows={rows} month={month} />
+      <AccountsSummary rows={rows} />
 
       {modal && (
         <AccountModal
           mode={modal.mode}
           initial={modal.initial}
-          profile={profile}
-          onSetProfile={setProfile}
           onSave={save}
           onClose={() => setModal(null)}
+          saving={saving}
         />
       )}
     </div>
